@@ -23,6 +23,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  universal_html: ^1.2.3
 
 dev_dependencies:
   flutter_test:
