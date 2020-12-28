@@ -235,6 +235,26 @@ class PianoRollPainter extends CustomPainter {
     canvas.scale(xScale, yScale);
     canvas.translate(xOffset + pianoKeysWidth / xScale, yOffset);
 
+    // draw pitch grid
+    Paint pitchGridDiv = Paint()..color = Colors.grey[200];
+    Paint pitchGridOctaveDiv = Paint()..color = Colors.grey[400];
+    double firstVisibleKey = (yPos / 20).floorToDouble();
+    int visibleKeys = ((size.height / yScale) / 20).floor();
+    for (int i = 0; i < visibleKeys; i++) {
+      if((firstVisibleKey + i) % 12 == 0) {
+        canvas.drawLine(
+            Offset(xPos - pianoKeysWidth * xScale, (firstVisibleKey + i) * 20),
+            Offset(xPos + size.width / xScale, (firstVisibleKey + i) * 20),
+            pitchGridOctaveDiv);
+      }
+      else {
+        canvas.drawLine(
+            Offset(xPos - pianoKeysWidth * xScale, (firstVisibleKey + i) * 20),
+            Offset(xPos + size.width / xScale, (firstVisibleKey + i) * 20),
+            pitchGridDiv);
+      }
+    }
+
     // draw time grid
     Paint beatDiv = Paint()..color = Colors.grey;
     Paint measureDiv = Paint()..color = Colors.black;
@@ -261,26 +281,6 @@ class PianoRollPainter extends CustomPainter {
                 Offset(leftMostBeatPos + i * beatDuration, 1920), beatDiv);
           }
         }
-      }
-    }
-
-    // draw pitch grid
-    Paint pitchGridDiv = Paint()..color = Colors.grey[200];
-    Paint pitchGridOctaveDiv = Paint()..color = Colors.grey[400];
-    double firstVisibleKey = (yPos / 20).floorToDouble();
-    int visibleKeys = ((size.height / yScale) / 20).floor();
-    for (int i = 0; i < visibleKeys; i++) {
-      if((firstVisibleKey + i) % 12 == 0) {
-        canvas.drawLine(
-            Offset(xPos - pianoKeysWidth * xScale, (firstVisibleKey + i) * 20),
-            Offset(xPos + size.width / xScale, (firstVisibleKey + i) * 20),
-            pitchGridOctaveDiv);
-      }
-      else {
-        canvas.drawLine(
-            Offset(xPos - pianoKeysWidth * xScale, (firstVisibleKey + i) * 20),
-            Offset(xPos + size.width / xScale, (firstVisibleKey + i) * 20),
-            pitchGridDiv);
       }
     }
 
