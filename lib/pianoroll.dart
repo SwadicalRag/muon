@@ -173,7 +173,7 @@ class PianoRollPainter extends CustomPainter {
   double lastHeight = 0;
   double lastWidth = 0;
 
-  final double timeGridScale = 2000;
+  final double pixelsPerBeat = 500;
 
   double get xPos {
     return -xOffset;
@@ -211,8 +211,8 @@ class PianoRollPainter extends CustomPainter {
     return (pitchMap[note] * 20 + 12 * 20 * (8 - octave)).toDouble();
   }
 
-  double getCurrentLeftmostTime() {
-    return xInternalPos / timeGridScale;
+  double getCurrentLeftmostBeat() {
+    return xInternalPos / pixelsPerBeat;
   }
 
   Point screenPosToCanvasPos(Point screenPos, bool outsideGrid) {
@@ -247,7 +247,7 @@ class PianoRollPainter extends CustomPainter {
     var canvasX = screenPosX / xScale - xOffset;
     var internalCanvasX = (canvasX * xScale - pianoKeysWidth) / xScale;
 
-    return internalCanvasX / timeGridScale;
+    return internalCanvasX / pixelsPerBeat;
   }
 
   MusicXMLPitch getPitchAtCursor(double screenPosY) {
@@ -272,9 +272,9 @@ class PianoRollPainter extends CustomPainter {
 
     for (final event in musicXML.events) {
       if (event is MusicXMLEventNote) {
-        var noteX = event.absoluteTime * timeGridScale;
+        var noteX = event.absoluteTime * pixelsPerBeat;
         var noteY = pitchToYAxis(event.pitch);
-        var noteW = event.absoluteDuration * timeGridScale;
+        var noteW = event.absoluteDuration * pixelsPerBeat;
         var noteH = 20;
 
         if ((noteX < canvasPos.x) &&
@@ -333,11 +333,9 @@ class PianoRollPainter extends CustomPainter {
         int beats = musicXML.lastTimeSignature.beats;
         int beatType = musicXML.lastTimeSignature.beatType;
 
-        double beatDuration = (1 / beats / divisions) * timeGridScale;
-        double leftMostBeat =
-            (getCurrentLeftmostTime() * beats * divisions).floorToDouble();
-        double leftMostBeatPos =
-            leftMostBeat * timeGridScale / divisions / beats;
+        double beatDuration = pixelsPerBeat;
+        double leftMostBeat = getCurrentLeftmostBeat().floorToDouble();
+        double leftMostBeatPos = leftMostBeat * pixelsPerBeat;
         int beatsInView = ((size.width / xScale) / beatDuration).ceil();
 
         for (int i = 0; i <= beatsInView; i++) {
@@ -360,25 +358,25 @@ class PianoRollPainter extends CustomPainter {
         if(selectedNotes.containsKey(event)) {
           canvas.drawRect(
               Rect.fromLTWH(
-                  event.absoluteTime * timeGridScale,
+                  event.absoluteTime * pixelsPerBeat,
                   pitchToYAxis(event.pitch),
-                  event.absoluteDuration * timeGridScale,
+                  event.absoluteDuration * pixelsPerBeat,
                   20),
               Paint()..color = Colors.blue[200]);
           canvas.drawRect(
               Rect.fromLTWH(
-                  event.absoluteTime * timeGridScale + 3,
+                  event.absoluteTime * pixelsPerBeat + 3,
                   pitchToYAxis(event.pitch) + 3,
-                  event.absoluteDuration * timeGridScale - 6,
+                  event.absoluteDuration * pixelsPerBeat - 6,
                   20 - 6.0),
               Paint()..color = Colors.blue);
         }
         else {
           canvas.drawRect(
               Rect.fromLTWH(
-                  event.absoluteTime * timeGridScale,
+                  event.absoluteTime * pixelsPerBeat,
                   pitchToYAxis(event.pitch),
-                  event.absoluteDuration * timeGridScale,
+                  event.absoluteDuration * pixelsPerBeat,
                   20),
               Paint()..color = Colors.blue);
         }
@@ -402,7 +400,7 @@ class PianoRollPainter extends CustomPainter {
           tp.paint(
               canvas,
               new Offset(
-                  (event.absoluteTime * timeGridScale +
+                  (event.absoluteTime * pixelsPerBeat +
                           xOffset +
                           pianoKeysWidth / xScale +
                           20) *
@@ -421,7 +419,7 @@ class PianoRollPainter extends CustomPainter {
         tp.layout();
         canvas.drawRect(
             Rect.fromLTWH(
-                (event.absoluteTime * timeGridScale +
+                (event.absoluteTime * pixelsPerBeat +
                         xOffset +
                         pianoKeysWidth / xScale) *
                     xScale + 1,
@@ -432,7 +430,7 @@ class PianoRollPainter extends CustomPainter {
         tp.paint(
             canvas,
             new Offset(
-                (event.absoluteTime * timeGridScale +
+                (event.absoluteTime * pixelsPerBeat +
                             xOffset +
                             pianoKeysWidth / xScale) *
                         xScale +
@@ -453,7 +451,7 @@ class PianoRollPainter extends CustomPainter {
         tp.layout();
         canvas.drawRect(
             Rect.fromLTWH(
-                (event.absoluteTime * timeGridScale +
+                (event.absoluteTime * pixelsPerBeat +
                         xOffset +
                         pianoKeysWidth / xScale) *
                     xScale + 1,
@@ -464,7 +462,7 @@ class PianoRollPainter extends CustomPainter {
         tp.paint(
             canvas,
             new Offset(
-                (event.absoluteTime * timeGridScale +
+                (event.absoluteTime * pixelsPerBeat +
                             xOffset +
                             pianoKeysWidth / xScale) *
                         xScale +

@@ -1,23 +1,65 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:universal_html/html.dart' as html show Node,Element;
 import 'package:universal_html/parsing.dart' as html show parseXmlDocument;
 
 class MusicXMLEvent {
   double absoluteTime;
-  double absoluteDuration = 0;
+  double time;
+  double duration = 0;
+  
+  MusicXMLEventTempo lastTempo;
+  MusicXMLEventTimeSignature lastTimeSignature;
+  MusicXMLEventDivision lastDivision;
+
+  MusicXMLEvent(MusicXML parent) {
+    if(this is MusicXMLEventTempo) {
+      lastTempo = this;
+    }
+    else {
+      lastTempo = parent.lastTempo;
+    }
+
+    if(this is MusicXMLEventTimeSignature) {
+      lastTimeSignature = this;
+    }
+    else {
+      lastTimeSignature = parent.lastTimeSignature;
+    }
+
+    if(this is MusicXMLEventDivision) {
+      lastDivision = this;
+    }
+    else {
+      lastDivision = parent.lastDivision;
+    }
+  }
+
+  double get absoluteDuration {
+    int divisions = 1;
+
+    if(lastDivision != null) {
+      divisions = lastDivision.divisions;
+    }
+
+    return (duration / divisions);
+  }
 }
 
 class MusicXMLEventDivision extends MusicXMLEvent {
+  MusicXMLEventDivision(MusicXML parent) : super(parent);
   int divisions;
 }
 
 
 class MusicXMLEventTempo extends MusicXMLEvent {
+  MusicXMLEventTempo(MusicXML parent) : super(parent);
   double tempo;
 }
 
 class MusicXMLEventTimeSignature extends MusicXMLEvent {
+  MusicXMLEventTimeSignature(MusicXML parent) : super(parent);
   int beats;
   int beatType;
 }
@@ -40,7 +82,12 @@ class MusicXMLPitch {
   }
 }
 
+class MusicXMLEventRest extends MusicXMLEvent {
+  MusicXMLEventRest(MusicXML parent) : super(parent);
+}
+
 class MusicXMLEventNote extends MusicXMLEvent {
+  MusicXMLEventNote(MusicXML parent) : super(parent);
   String lyric;
 
   MusicXMLPitch pitch;
@@ -53,6 +100,7 @@ class MusicXMLEventNote extends MusicXMLEvent {
 
 class MusicXML {
   List<MusicXMLEvent> events = [];
+  double duration = 0;
   double absoluteDuration = 0;
   MusicXMLEventTempo lastTempo;
   MusicXMLEventTimeSignature lastTimeSignature;
@@ -60,7 +108,10 @@ class MusicXML {
   MusicXMLEventNote lastNote;
 
   void addEvent(MusicXMLEvent event) {
+    event.time = duration;
     event.absoluteTime = absoluteDuration;
+
+    duration += event.duration;
     absoluteDuration += event.absoluteDuration;
 
     if(event is MusicXMLEventTempo) {
@@ -81,29 +132,26 @@ class MusicXML {
 
   double noteDurationToAbsoluteTime(double noteDuration) {
     int divisions = 1;
-    int beatType = 4;
 
     if(lastDivision != null) {
       divisions = lastDivision.divisions;
     }
 
-    if(lastTimeSignature != null) {
-      beatType = lastTimeSignature.beatType;
-    }
-
-    return (noteDuration / divisions) / beatType;
+    return noteDuration / divisions;
   }
 
-  void rest(double time) {
-    absoluteDuration += time;
+  void rest(double duration) {
+    addEvent(new MusicXMLEventRest(this)..duration = duration);
   }
 
   void mergeNote(MusicXMLEventNote noteEvent,bool resolve) {
     if(lastNote != null) {
       if(lastNote.compoundNote && !lastNote.compoundNoteResolved) {
         if(lastNote.pitch == noteEvent.pitch) {
-          lastNote.absoluteDuration += noteEvent.absoluteDuration;
           absoluteDuration += noteEvent.absoluteDuration;
+          
+          lastNote.duration += noteEvent.duration;
+          duration += noteEvent.duration;
 
           lastNote.compoundNoteResolved = resolve;
 
@@ -115,6 +163,63 @@ class MusicXML {
     noteEvent.compoundNote = true;
     noteEvent.compoundNoteResolved = resolve;
     addEvent(noteEvent);
+  }
+
+  void recalculateAbsoluteTime() {
+    duration = 0;
+    absoluteDuration = 0;
+
+    for(final event in events) {
+      event.time = duration;
+      event.absoluteTime = absoluteDuration;
+      duration += event.duration;
+      absoluteDuration += event.absoluteDuration;
+    }
+  }
+
+  void multiplyDivisions(int divMul) {
+    for(final event in events) {
+      if(event is MusicXMLEventDivision) {
+        event.divisions *= divMul;
+      }
+      event.duration *= divMul;
+    }
+
+    recalculateAbsoluteTime();
+  }
+
+  void factorDivisions() {
+    // who cares about computational efficiency anyway
+    
+    int gcd(int a,int b) => (b == 0) ? a : gcd(b, a % b);
+    int gcdArray(List<int> a, int offset) {
+      if(a.length < (offset + 1)) {
+        return gcd(a[offset],gcdArray(a,offset + 1));
+      }
+      else {
+        return a[offset];
+      }
+    }
+
+    List<int> allDurations = [];
+    for(final event in events) {
+      if(event.duration.floor() != 0) {
+        allDurations.add(event.duration.floor());
+      }
+    }
+
+    var lcmDuration = gcdArray(allDurations,1);
+
+    if(lcmDuration > 1) {
+      for(final event in events) {
+        if(event is MusicXMLEventDivision) {
+          event.divisions = (event.divisions / lcmDuration).floor();
+        }
+        event.duration /= lcmDuration;
+      }
+    }
+
+    recalculateAbsoluteTime();
   }
 }
 
@@ -158,7 +263,7 @@ void _parseMeasure(html.Element measure,MusicXML out) {
           for(final attribute in el.childNodes) {
             switch(attribute.nodeName) {
               case "time": {
-                var timeSigEvent = MusicXMLEventTimeSignature();
+                var timeSigEvent = MusicXMLEventTimeSignature(out);
                 for(final timeSignature in attribute.childNodes) {
                   if(timeSignature.nodeName == "beats") {
                     timeSigEvent.beats = int.parse(timeSignature.text);
@@ -171,7 +276,7 @@ void _parseMeasure(html.Element measure,MusicXML out) {
                 break;
               }
               case "divisions": {
-                var divEvent = MusicXMLEventDivision();
+                var divEvent = MusicXMLEventDivision(out);
                 divEvent.divisions = int.parse(attribute.text);
                 out.addEvent(divEvent);
 
@@ -188,7 +293,7 @@ void _parseMeasure(html.Element measure,MusicXML out) {
           for(final directionData in el.childNodes) {
             if(directionData is html.Element) {
               if(directionData.nodeName == "sound") {
-                var tempoEvent = MusicXMLEventTempo();
+                var tempoEvent = MusicXMLEventTempo(out);
                 tempoEvent.tempo = double.parse(directionData.getAttribute("tempo"));
                 out.addEvent(tempoEvent);
               }
@@ -197,7 +302,7 @@ void _parseMeasure(html.Element measure,MusicXML out) {
           break;
         }
         case "sound": {
-          var tempoEvent = MusicXMLEventTempo();
+          var tempoEvent = MusicXMLEventTempo(out);
           tempoEvent.tempo = double.parse(el.getAttribute("tempo"));
           out.addEvent(tempoEvent);
           break;
@@ -207,16 +312,15 @@ void _parseMeasure(html.Element measure,MusicXML out) {
           if(duration == null) {continue;}
 
           var durationVal = double.parse(duration.text);
-          var durationAbs = out.noteDurationToAbsoluteTime(durationVal);
 
           var rest = _getChildElement(el,"rest");
           if(rest != null) {
-            out.rest(durationAbs);
+            out.rest(durationVal);
           }
           else {
-            var noteEvent = MusicXMLEventNote();
+            var noteEvent = MusicXMLEventNote(out);
             
-            noteEvent.absoluteDuration = durationAbs;
+            noteEvent.duration = durationVal;
             noteEvent.lyric = _getChildText(el,"lyric","").trim();
 
             var pitch = MusicXMLPitch();
