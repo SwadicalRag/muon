@@ -198,15 +198,22 @@ class PianoRollPainter extends CustomPainter {
     );
   }
 
-  double getAbsoluteTimeAtCursor(Point screenPos) {
-    var canvasX = screenPos.x / xScale - xOffset;
+  Point canvasPosToScreenPos(Point canvasPos) {
+    return Point(
+      (canvasPos.x + xOffset) * xScale,
+      (canvasPos.y + yOffset) * yScale,
+    );
+  }
+
+  double getAbsoluteTimeAtCursor(double screenPosX) {
+    var canvasX = screenPosX / xScale - xOffset;
     var internalCanvasX = (canvasX * xScale - pianoKeysWidth) / xScale;
 
     return internalCanvasX / timeGridScale;
   }
 
-  MusicXMLPitch getPitchAtCursor(Point screenPos) {
-    var canvasY = screenPos.y / yScale - yOffset;
+  MusicXMLPitch getPitchAtCursor(double screenPosY) {
+    var canvasY = screenPosY / yScale - yOffset;
     
     var pitchDiv = (canvasY / 20).floor();
     var rawOctave = (pitchDiv / 12).floor();
