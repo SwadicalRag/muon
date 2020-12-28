@@ -397,18 +397,412 @@ MusicXML parseFile(String filePath) {
   return out;
 }
 
+String serializeMusicXML(MusicXML musicXML) {
+  String out = "";
+  int indentLevel = 0;
+
+  void append(str) => out += str;
+  void indent() {
+    indentLevel += 1;
+    if(out.contains(RegExp("\n[ ]+\$"))) {
+      out = out.replaceFirst(RegExp("\n[ ]+\$"), "");
+      out += "\n" + (("    ") * indentLevel);
+    }
+  }
+  void outdent() {
+    indentLevel -= 1;
+    if(out.contains(RegExp("\n[ ]+\$"))) {
+      out = out.replaceFirst(RegExp("\n[ ]+\$"), "");
+      out += "\n" + (("    ") * indentLevel);
+    }
+  }
+  void newline() {
+    if(!out.contains(RegExp("\n[ ]*\$"))) {
+      out += "\n" + (("    ") * indentLevel);
+    }
+  }
+
+  void beginTag(tagName,Map<String,String> attributes) {
+    append("<");
+    append(tagName);
+    if(attributes.length > 0) {
+      append(" ");
+      for(final attrKey in attributes.keys) {
+        append(attrKey);
+        append("=");
+        append('"');
+        append(attributes[attrKey]);
+        append('"');
+      }
+    }
+    append(">");
+    indent();
+    newline();
+  }
+
+  void endTag(tagName) {
+    outdent();
+    newline();
+    append("</");
+    append(tagName);
+    append(">");
+    newline();
+  }
+
+  void valueTag(String tagName,String tagValue,Map<String,String> attributes) {
+    append("<");
+    append(tagName);
+    if(attributes.length > 0) {
+      append(" ");
+      for(final attrKey in attributes.keys) {
+        append(attrKey);
+        append("=");
+        append('"');
+        append(attributes[attrKey]);
+        append('"');
+      }
+    }
+    
+    append(">");
+    append(tagValue);
+    append("</");
+    append(tagName);
+    append(">");
+  }
+
+  void valueTagSelfClosing(String tagName,Map<String,String> attributes) {
+    append("<");
+    append(tagName);
+    if(attributes.length > 0) {
+      append(" ");
+      for(final attrKey in attributes.keys) {
+        append(attrKey);
+        append("=");
+        append('"');
+        append(attributes[attrKey]);
+        append('"');
+      }
+    }
+    
+    append(" />");
+  }
+
+  append('<?xml version="1.0" encoding="utf-8"?>');
+  newline();
+  append('<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd"[]>');
+  newline();
+
+  int curMeasureNum = 1;
+  int lastDivision = 1;
+  int lastBeats = 1;
+  int lastBeatType = 1;
+  double curBeat = 0;
+  Map<double,String> divisionToNoteType = {};
+  void regenerateDivisionMapping() {
+    divisionToNoteType = {};
+    double curDiv = (lastDivision * lastBeatType).toDouble();
+    void addDiv(String type) {
+      divisionToNoteType[curDiv] = type;
+      curDiv /= 2;
+    }
+    
+    addDiv("whole");
+    addDiv("half");
+    addDiv("quarter");
+    addDiv("eighth");
+    addDiv("16th");
+    addDiv("32nd");
+    addDiv("64th");
+    addDiv("128th");
+  }
+  regenerateDivisionMapping();
+
+  bool divSet = false;
+  bool beatSet = false;
+  bool divBeatWritten = false;
+
+  beginTag("score-partwise",{});
+    beginTag("identification",{});
+      beginTag("encoding",{});
+        valueTag("software", "muon", {});
+      endTag("encoding");
+    endTag("identification");
+    beginTag("part-list",{});
+      beginTag("score-part",{"id": "P1"});
+        valueTag("part-name", "Part1", {});
+      endTag("score-part");
+    endTag("part-list");
+    beginTag("part",{"id": "P1"});
+      beginTag("measure",{"number": "1"});
+        for(final event in musicXML.events) {
+          if(event is MusicXMLEventDivision) {
+            lastDivision = event.divisions;
+            regenerateDivisionMapping();
+            if(!divSet) {
+              divSet = true;
+            }
+            else {
+              // division has .. changed?
+
+              beginTag("attributes",{});
+                valueTag("divisions", lastDivision.toString(), {}); newline();
+              endTag("attributes");
+            }
+          }
+          else if(event is MusicXMLEventTimeSignature) {
+            lastBeats = event.beats;
+            lastBeatType = event.beatType;
+            regenerateDivisionMapping();
+            if(!beatSet) {
+              beatSet = true;
+            }
+            else {
+              // time signature has changed
+
+              beginTag("attributes",{});
+                beginTag("time",{});
+                  valueTag("beats", lastBeats.toString(), {}); newline();
+                  valueTag("beat-type", lastBeatType.toString(), {});
+                endTag("time");
+              endTag("attributes");
+            }
+          }
+          else if(event is MusicXMLEventTempo) {
+            beginTag("direction",{});
+              valueTagSelfClosing("sound", {"tempo": event.tempo.toString()});
+            endTag("direction");
+          }
+          else if(event is MusicXMLEventRest) {
+            var beatsRemaining = max(0,curMeasureNum * lastBeats - curBeat);
+            var duration = event.duration;
+
+            var tieMode = false;
+
+            while(duration > 0) {
+              if(beatsRemaining <= 0) {
+                endTag("measure");
+                curMeasureNum++;
+                beginTag("measure",{"number": curMeasureNum.toString()});
+                beatsRemaining = lastBeats.toDouble();
+              }
+
+              var writeDur = min(beatsRemaining * lastDivision,duration);
+              var writeDurInternal = writeDur;
+              var isDotted = false;
+
+              if(!divisionToNoteType.containsKey(writeDur.toDouble())) {
+                if(writeDur % 2 != 0) {
+                  // make dotted note
+                  writeDurInternal = writeDurInternal - 1;
+                  isDotted = true;
+                }
+                
+                if(divisionToNoteType.containsKey(writeDur.toDouble())) {
+                  // problem solved!
+                }
+                else if((writeDur % 2 == 0) && divisionToNoteType.containsKey((writeDur / 2).toDouble())) {
+                  writeDurInternal = writeDurInternal / 2;
+                }
+                else {
+                  // give up
+                }
+              }
+
+              curBeat += writeDur / lastDivision;
+              beatsRemaining = max(0,curMeasureNum * lastBeats - curBeat);
+              duration = duration - writeDur;
+              
+              beginTag("note",{});
+                valueTagSelfClosing("rest", {}); newline();
+                valueTag("duration", writeDur.toStringAsFixed(0), {}); newline();
+                if(divisionToNoteType.containsKey(writeDurInternal.toDouble())) {
+                  valueTag("type", divisionToNoteType[writeDurInternal.toDouble()], {}); newline();
+                }
+                else {
+                  // we gave up
+                  // valueTag("type", "?", {}); newline();
+                }
+                if(isDotted) {
+                  valueTagSelfClosing("dot", {}); newline();
+                }
+                valueTag("voice", "1", {}); newline();
+                if(!tieMode) {
+                  if(duration > 0) {
+                    // still more left to write.
+                    // begin tie.
+
+                    valueTagSelfClosing("tie", {"type": "start"});
+                    beginTag("notations",{});
+                    valueTagSelfClosing("tied", {"type": "start"});
+                    endTag("notations");
+
+                    tieMode = true;
+                  }
+                }
+                else {
+                  if(duration > 0) {
+                    // still more left to write.
+                    // continue tie.
+
+                    // not sure if this is even correct lmao
+
+                    valueTagSelfClosing("tie", {});
+                    beginTag("notations",{});
+                    valueTagSelfClosing("tied", {});
+                    endTag("notations");
+                  }
+                  else {
+                    valueTagSelfClosing("tie", {"type": "stop"});
+                    beginTag("notations",{});
+                    valueTagSelfClosing("tied", {"type": "stop"});
+                    endTag("notations");
+                  }
+                }
+              endTag("note");
+            }
+          }
+          else if(event is MusicXMLEventNote) {
+            var beatsRemaining = max(0,curMeasureNum * lastBeats - curBeat);
+            var duration = event.duration;
+
+            var tieMode = false;
+
+            while(duration > 0) {
+              if(beatsRemaining <= 0) {
+                endTag("measure");
+                curMeasureNum++;
+                beginTag("measure",{"number": curMeasureNum.toString()});
+                beatsRemaining = lastBeats.toDouble();
+              }
+
+              var writeDur = min(beatsRemaining * lastDivision,duration);
+              var writeDurInternal = writeDur;
+              var isDotted = false;
+
+              if(!divisionToNoteType.containsKey(writeDur.toDouble())) {
+                if(writeDur % 2 != 0) {
+                  // make dotted note
+                  writeDurInternal = writeDurInternal - 1;
+                  isDotted = true;
+                }
+                
+                if(divisionToNoteType.containsKey(writeDur.toDouble())) {
+                  // problem solved!
+                }
+                else if((writeDur % 2 == 0) && divisionToNoteType.containsKey((writeDur / 2).toDouble())) {
+                  writeDurInternal = writeDurInternal / 2;
+                }
+                else {
+                  // give up
+                }
+              }
+
+              curBeat += writeDur / lastDivision;
+              beatsRemaining = max(0,curMeasureNum * lastBeats - curBeat);
+              duration = duration - writeDur;
+              
+              beginTag("note",{});
+                valueTag("duration", writeDur.toStringAsFixed(0), {}); newline();
+                if(divisionToNoteType.containsKey(writeDurInternal.toDouble())) {
+                  valueTag("type", divisionToNoteType[writeDurInternal.toDouble()], {}); newline();
+                }
+                else {
+                  // we gave up
+                  // valueTag("type", "?", {}); newline();
+                }
+                if(isDotted) {
+                  valueTagSelfClosing("dot", {}); newline();
+                }
+                valueTag("voice", "1", {}); newline();
+                if((event.lyric.length > 0) && !tieMode) {
+                  beginTag("lyric",{});
+                    valueTag("text", event.lyric, {}); newline();
+                  endTag("lyric");
+                }
+                beginTag("pitch",{});
+                  if(event.pitch.note.endsWith("#")) {
+                    valueTag("alter", "1", {}); newline();
+                    valueTag("step", event.pitch.note[0], {}); newline();
+                  }
+                  else {
+                    valueTag("step", event.pitch.note, {}); newline();
+                  }
+                  valueTag("octave", event.pitch.octave.toString(), {}); newline();
+                endTag("pitch");
+                if(!tieMode) {
+                  if(duration > 0) {
+                    // still more left to write.
+                    // begin tie.
+
+                    valueTagSelfClosing("tie", {"type": "start"});
+                    beginTag("notations",{});
+                    valueTagSelfClosing("tied", {"type": "start"});
+                    endTag("notations");
+
+                    tieMode = true;
+                  }
+                }
+                else {
+                  if(duration > 0) {
+                    // still more left to write.
+                    // continue tie.
+
+                    // not sure if this is even correct lmao
+
+                    valueTagSelfClosing("tie", {});
+                    beginTag("notations",{});
+                    valueTagSelfClosing("tied", {});
+                    endTag("notations");
+                  }
+                  else {
+                    valueTagSelfClosing("tie", {"type": "stop"});
+                    beginTag("notations",{});
+                    valueTagSelfClosing("tied", {"type": "stop"});
+                    endTag("notations");
+                  }
+                }
+              endTag("note");
+            }
+          }
+
+          if(!divBeatWritten && divSet && beatSet) {
+            divBeatWritten = true;
+
+            beginTag("attributes",{});
+              valueTag("divisions", lastDivision.toString(), {}); newline();
+              beginTag("key",{});
+              valueTag("fifths", "5", {});
+              endTag("key");
+              beginTag("time",{});
+                valueTag("beats", lastBeats.toString(), {}); newline();
+                valueTag("beat-type", lastBeatType.toString(), {});
+              endTag("time");
+              beginTag("clef",{});
+                valueTag("sign", "G", {}); newline();
+                valueTag("line", "2", {});
+              endTag("clef");
+            endTag("attributes");
+          }
+        }
+      endTag("measure");
+    endTag("part");
+  endTag("score-partwise");
+
+  return out;
+}
+
 MusicXML getDefaultFile() {
-  return parseFile("lib/logic/7_kokoro.musicxml");
+  return parseFile("E:\\Work\\Neutrino\\NEUTRINO\\score\\musicxml\\9_mochistu.musicxml");
 }
 
 void main() {
   final document = parseFile('7_kokoro.musicxml');
 
-  for(final event in document.events) {
-    print(event.absoluteTime.toString());
-    if(event is MusicXMLEventNote) {
-      print(event.lyric);
-      print(event.pitch?.note);
-    }
-  }
+  // for(final event in document.events) {
+  //   print(event.absoluteTime.toString());
+  //   if(event is MusicXMLEventNote) {
+  //     print(event.lyric);
+  //     print(event.pitch?.note);
+  //   }
+  // }
 }
