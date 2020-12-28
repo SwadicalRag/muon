@@ -398,7 +398,7 @@ class PianoRollPainter extends CustomPainter {
                 (event.absoluteTime * timeGridScale +
                         xOffset +
                         pianoKeysWidth / xScale) *
-                    xScale,
+                    xScale + 1,
                 (yPos + yOffset) * yScale,
                 (tp.width + 20),
                 20 * yScale),
@@ -430,7 +430,7 @@ class PianoRollPainter extends CustomPainter {
                 (event.absoluteTime * timeGridScale +
                         xOffset +
                         pianoKeysWidth / xScale) *
-                    xScale,
+                    xScale + 1,
                 (yPos + yOffset) * yScale,
                 (tp.width + 20),
                 20 * yScale),
