@@ -82,17 +82,21 @@ class MusicXMLPitch {
   }
 }
 
-class MusicXMLEventRest extends MusicXMLEvent {
+class MusicXMLEventVoiced extends MusicXMLEvent {
+  MusicXMLEventVoiced(MusicXML parent) : super(parent);
+
+  int voice;
+}
+
+class MusicXMLEventRest extends MusicXMLEventVoiced {
   MusicXMLEventRest(MusicXML parent) : super(parent);
 }
 
-class MusicXMLEventNote extends MusicXMLEvent {
+class MusicXMLEventNote extends MusicXMLEventVoiced {
   MusicXMLEventNote(MusicXML parent) : super(parent);
   String lyric;
 
   MusicXMLPitch pitch;
-
-  int voice;
 
   bool compoundNote = false;
   bool compoundNoteResolved = false;
@@ -100,19 +104,73 @@ class MusicXMLEventNote extends MusicXMLEvent {
 
 class MusicXML {
   List<MusicXMLEvent> events = [];
-  double duration = 0;
-  double absoluteDuration = 0;
+  Map<int,double> voiceDuration = {};
+  Map<int,double> voiceAbsoluteDuration = {};
   MusicXMLEventTempo lastTempo;
   MusicXMLEventTimeSignature lastTimeSignature;
   MusicXMLEventDivision lastDivision;
   MusicXMLEventNote lastNote;
 
+  bool _independentVoiceMode = false;
+
+  double getGlobalDurationFromEvent(MusicXMLEvent event) {
+    if(_independentVoiceMode && (event is MusicXMLEventVoiced)) {
+      if(voiceDuration.containsKey(event.voice)) {
+        return voiceDuration[event.voice];
+      }
+      else {
+        return 0;
+      }
+    }
+
+    if(voiceDuration.containsKey(1)) {
+      return voiceDuration[1];
+    }
+
+    return 0;
+  }
+
+  double getGlobalAbsoluteDurationFromEvent(MusicXMLEvent event) {
+    if(_independentVoiceMode && (event is MusicXMLEventVoiced)) {
+      if(voiceDuration.containsKey(event.voice)) {
+        return voiceAbsoluteDuration[event.voice];
+      }
+      else {
+        return 0;
+      }
+    }
+
+    if(voiceDuration.containsKey(1)) {
+      return voiceAbsoluteDuration[1];
+    }
+    
+    return 0;
+  }
+
+  void setGlobalDurationFromEvent(MusicXMLEvent event, double duration) {
+    if(_independentVoiceMode && (event is MusicXMLEventVoiced)) {
+      voiceDuration[event.voice] = duration;
+    }
+
+    voiceDuration[1] = duration;
+  }
+
+  void setGlobalAbsoluteDurationFromEvent(MusicXMLEvent event, double absoluteDuration) {
+    if(_independentVoiceMode && (event is MusicXMLEventVoiced)) {
+      voiceAbsoluteDuration[event.voice] = absoluteDuration;
+    }
+
+    voiceAbsoluteDuration[1] = absoluteDuration;
+  }
+
   void addEvent(MusicXMLEvent event) {
+    final duration = getGlobalDurationFromEvent(event);
+    final absoluteDuration = getGlobalAbsoluteDurationFromEvent(event);
     event.time = duration;
     event.absoluteTime = absoluteDuration;
 
-    duration += event.duration;
-    absoluteDuration += event.absoluteDuration;
+    setGlobalDurationFromEvent(event,duration + event.duration);
+    setGlobalAbsoluteDurationFromEvent(event,absoluteDuration + event.absoluteDuration);
 
     if(event is MusicXMLEventTempo) {
       lastTempo = event;
@@ -140,18 +198,21 @@ class MusicXML {
     return noteDuration / divisions;
   }
 
-  void rest(double duration) {
-    addEvent(new MusicXMLEventRest(this)..duration = duration);
+  void rest(double duration, int voice) {
+    var rest = new MusicXMLEventRest(this);
+    rest.voice = voice;
+    rest.duration = duration;
+    addEvent(rest);
   }
 
   void mergeNote(MusicXMLEventNote noteEvent,bool resolve) {
     if(lastNote != null) {
       if(lastNote.compoundNote && !lastNote.compoundNoteResolved) {
         if(lastNote.pitch == noteEvent.pitch) {
-          absoluteDuration += noteEvent.absoluteDuration;
+          setGlobalAbsoluteDurationFromEvent(noteEvent,getGlobalAbsoluteDurationFromEvent(noteEvent) + noteEvent.absoluteDuration);
           
           lastNote.duration += noteEvent.duration;
-          duration += noteEvent.duration;
+          setGlobalDurationFromEvent(noteEvent,getGlobalDurationFromEvent(noteEvent) + noteEvent.duration);
 
           lastNote.compoundNoteResolved = resolve;
 
@@ -166,14 +227,18 @@ class MusicXML {
   }
 
   void recalculateAbsoluteTime() {
-    duration = 0;
-    absoluteDuration = 0;
+    voiceDuration = {};
+    voiceAbsoluteDuration = {};
 
     for(final event in events) {
+      final duration = getGlobalDurationFromEvent(event);
+      final absoluteDuration = getGlobalAbsoluteDurationFromEvent(event);
+
       event.time = duration;
       event.absoluteTime = absoluteDuration;
-      duration += event.duration;
-      absoluteDuration += event.absoluteDuration;
+
+      setGlobalDurationFromEvent(event,duration + event.duration);
+      setGlobalAbsoluteDurationFromEvent(event,absoluteDuration + event.absoluteDuration);
     }
   }
 
@@ -310,16 +375,20 @@ void _parseMeasure(html.Element measure,MusicXML out) {
         case "note": {
           var duration = _getChildElement(el,"duration");
           if(duration == null) {continue;}
+          
+          var voiceRaw = _getChildText(el,"voice","1");
+          int voice = int.parse(voiceRaw);
 
           var durationVal = double.parse(duration.text);
 
           var rest = _getChildElement(el,"rest");
           if(rest != null) {
-            out.rest(durationVal);
+            out.rest(durationVal,voice);
           }
           else {
             var noteEvent = MusicXMLEventNote(out);
             
+            noteEvent.voice = voice;
             noteEvent.duration = durationVal;
             noteEvent.lyric = _getChildText(el,"lyric","").trim();
 
@@ -625,7 +694,7 @@ String serializeMusicXML(MusicXML musicXML) {
                 if(isDotted) {
                   valueTagSelfClosing("dot", {}); newline();
                 }
-                valueTag("voice", "1", {}); newline();
+                valueTag("voice", event.voice.toString(), {}); newline();
                 if(!tieMode) {
                   if(duration > 0) {
                     // still more left to write.
@@ -713,7 +782,7 @@ String serializeMusicXML(MusicXML musicXML) {
                 if(isDotted) {
                   valueTagSelfClosing("dot", {}); newline();
                 }
-                valueTag("voice", "1", {}); newline();
+                valueTag("voice", event.voice.toString(), {}); newline();
                 if((event.lyric.length > 0) && !tieMode) {
                   beginTag("lyric",{});
                     valueTag("text", event.lyric, {}); newline();
@@ -792,13 +861,16 @@ String serializeMusicXML(MusicXML musicXML) {
 }
 
 MusicXML getDefaultFile() {
+  return parseFile('lib/logic/7_kokoro.musicxml');
   return parseFile("E:\\Work\\Neutrino\\NEUTRINO\\score\\musicxml\\9_mochistu.musicxml");
 }
 
 void main() {
-  final document = parseFile('7_kokoro.musicxml');
+  final musicXML = parseFile('7_kokoro.musicxml');
 
-  // for(final event in document.events) {
+  print(serializeMusicXML(musicXML));
+
+  // for(final event in musicXML.events) {
   //   print(event.absoluteTime.toString());
   //   if(event is MusicXMLEventNote) {
   //     print(event.lyric);

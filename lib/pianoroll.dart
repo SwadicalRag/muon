@@ -289,6 +289,16 @@ class PianoRollPainter extends CustomPainter {
     return null;
   }
 
+  final noteColors = [
+    Colors.blue,
+    Colors.purple,
+    Colors.amber,
+    Colors.indigo,
+    Colors.green,
+    Colors.teal,
+    Colors.brown,
+  ];
+
   @override
   void paint(Canvas canvas, Size size) {
     lastWidth = size.width;
@@ -355,6 +365,7 @@ class PianoRollPainter extends CustomPainter {
     for (final event in musicXML.events) {
       if (event is MusicXMLEventNote) {
         // print("Abs" + (event.absoluteTime).toString());
+        var noteColor = noteColors[event.voice % noteColors.length];
         if(selectedNotes.containsKey(event)) {
           canvas.drawRect(
               Rect.fromLTWH(
@@ -362,14 +373,14 @@ class PianoRollPainter extends CustomPainter {
                   pitchToYAxis(event.pitch),
                   event.absoluteDuration * pixelsPerBeat,
                   20),
-              Paint()..color = Colors.blue[200]);
+              Paint()..color = noteColor[200]);
           canvas.drawRect(
               Rect.fromLTWH(
                   event.absoluteTime * pixelsPerBeat + 3,
                   pitchToYAxis(event.pitch) + 3,
                   event.absoluteDuration * pixelsPerBeat - 6,
                   20 - 6.0),
-              Paint()..color = Colors.blue);
+              Paint()..color = noteColor);
         }
         else {
           canvas.drawRect(
@@ -378,7 +389,7 @@ class PianoRollPainter extends CustomPainter {
                   pitchToYAxis(event.pitch),
                   event.absoluteDuration * pixelsPerBeat,
                   20),
-              Paint()..color = Colors.blue);
+              Paint()..color = noteColor);
         }
       }
     }
