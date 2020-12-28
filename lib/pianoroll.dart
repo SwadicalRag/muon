@@ -21,6 +21,7 @@ class _PianoRollState extends State<PianoRoll> {
   bool _dragging = false;
   final FocusNode focusNode = FocusNode();
   MusicXML musicXML = getDefaultFile();
+  Map<MusicXMLEventNote,bool> selectedNotes = {};
 
   void clampXY(double renderBoxHeight) {
     xOffset = min(0, xOffset);
@@ -58,7 +59,7 @@ class _PianoRollState extends State<PianoRoll> {
         }
 
         var rectPainter = PianoRollPainter(
-            pianoKeysWidth, xOffset, yOffset, xScale, yScale, musicXML);
+            pianoKeysWidth, xOffset, yOffset, xScale, yScale, musicXML, selectedNotes);
 
         return RawKeyboardListener(
             focusNode: focusNode,
@@ -138,6 +139,12 @@ class _PianoRollState extends State<PianoRoll> {
 
                 // var eventAtCursor = rectPainter.getMusicXMLEventAtScreenPos(screenPos);
                 // print("event " + eventAtCursor.toString());
+
+                // if(eventAtCursor is MusicXMLEventNote) {
+                //   setState(() {
+                //     selectedNotes.putIfAbsent(eventAtCursor, () => true);
+                //   });
+                // }
               },
               child: Container(
                 color: Colors.white,
@@ -154,13 +161,14 @@ class _PianoRollState extends State<PianoRoll> {
 
 class PianoRollPainter extends CustomPainter {
   PianoRollPainter(this.pianoKeysWidth, this.xOffset, this.yOffset, this.xScale,
-      this.yScale, this.musicXML);
+      this.yScale, this.musicXML, this.selectedNotes);
   final double pianoKeysWidth;
   final double xOffset;
   final double yOffset;
   final double xScale;
   final double yScale;
   final MusicXML musicXML;
+  final Map<MusicXMLEventNote,bool> selectedNotes;
 
   double lastHeight = 0;
   double lastWidth = 0;
@@ -349,13 +357,31 @@ class PianoRollPainter extends CustomPainter {
     for (final event in musicXML.events) {
       if (event is MusicXMLEventNote) {
         // print("Abs" + (event.absoluteTime).toString());
-        canvas.drawRect(
-            Rect.fromLTWH(
-                event.absoluteTime * timeGridScale,
-                pitchToYAxis(event.pitch),
-                event.absoluteDuration * timeGridScale,
-                20),
-            Paint()..color = Colors.blue);
+        if(selectedNotes.containsKey(event)) {
+          canvas.drawRect(
+              Rect.fromLTWH(
+                  event.absoluteTime * timeGridScale,
+                  pitchToYAxis(event.pitch),
+                  event.absoluteDuration * timeGridScale,
+                  20),
+              Paint()..color = Colors.blue[200]);
+          canvas.drawRect(
+              Rect.fromLTWH(
+                  event.absoluteTime * timeGridScale + 3,
+                  pitchToYAxis(event.pitch) + 3,
+                  event.absoluteDuration * timeGridScale - 6,
+                  20 - 6.0),
+              Paint()..color = Colors.blue);
+        }
+        else {
+          canvas.drawRect(
+              Rect.fromLTWH(
+                  event.absoluteTime * timeGridScale,
+                  pitchToYAxis(event.pitch),
+                  event.absoluteDuration * timeGridScale,
+                  20),
+              Paint()..color = Colors.blue);
+        }
       }
     }
 
