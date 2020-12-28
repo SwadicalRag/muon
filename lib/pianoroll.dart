@@ -322,6 +322,11 @@ class PianoRollPainter extends CustomPainter {
     canvas.scale(1, yScale);
     canvas.translate(0, yOffset);
 
+    // draw shadow
+    var shadowPath = new Path();
+    shadowPath.addRect(Rect.fromLTWH(0, 0, pianoKeysWidth, 1920));
+    canvas.drawShadow(shadowPath, Colors.black, 10, false);
+
     Paint whiteKeys = Paint()..color = Colors.white;
     Paint blackKeys = Paint()..color = Colors.black;
     List<String> toDraw = ["B","A#","A","G#","G","F#","F","E","D#","D","C#","C"];
@@ -338,6 +343,11 @@ class PianoRollPainter extends CustomPainter {
           canvas.drawRect(
             Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), whiteKeys);
         }
+
+        canvas.drawLine(
+            Offset(0, (keyIdx) * 20),
+            Offset(pianoKeysWidth, (keyIdx) * 20),
+            pitchGridDiv);
 
         keyIdx++;
       }
