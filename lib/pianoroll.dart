@@ -23,7 +23,7 @@ class _PianoRollState extends State<PianoRoll> {
   MusicXML musicXML = getDefaultFile();
 
   void clampXY(double renderBoxHeight) {
-    xOffset = min(pianoKeysWidth, xOffset);
+    xOffset = min(0, xOffset);
 
     double totHeight = renderBoxHeight / yScale;
     yOffset = min(0, yOffset);
@@ -122,6 +122,12 @@ class _PianoRollState extends State<PianoRoll> {
                     });
                   }
                 },
+                onPointerHover: (details) {
+                  // var pitch = rectPainter.getPitchAtCursor(Point(details.localPosition.dx,details.localPosition.dy));
+                  // var absTime = rectPainter.getAbsoluteTimeAtCursor(Point(details.localPosition.dx,details.localPosition.dy));
+                  // print("pitch: " + pitch.note + pitch.octave.toString());
+                  // print("absTime: " + absTime.toString());
+                },
                 child: Container(
                   color: Colors.white,
                   child: CustomPaint(
@@ -156,12 +162,12 @@ class PianoRollPainter extends CustomPainter {
   }
 
   double get xInternalPos {
-    return (xPos * xScale + pianoKeysWidth) / xScale;
+    return (xPos * xScale - pianoKeysWidth) / xScale;
   }
 
   final double timeGridScale = 2000;
 
-  Map<String, int> pitchMap = {
+  static Map<String, int> pitchMap = {
     'C': 11,
     'C#': 10,
     'D': 9,
@@ -175,6 +181,7 @@ class PianoRollPainter extends CustomPainter {
     'A#': 1,
     'B': 0,
   };
+  static Map<int, String> pitchMapReverse = pitchMap.map((key, value) => new MapEntry(value,key));
   double pitchToYAxis(MusicXMLPitch pitch) {
     return (pitchMap[pitch.note] * 20 + 12 * 20 * (8 - pitch.octave))
         .toDouble();
@@ -182,6 +189,34 @@ class PianoRollPainter extends CustomPainter {
 
   double getCurrentLeftmostTime() {
     return xInternalPos / timeGridScale;
+  }
+
+  Point screenPosToCanvasPos(Point screenPos) {
+    return Point(
+      screenPos.x / xScale - xOffset,
+      screenPos.y / yScale - yOffset,
+    );
+  }
+
+  double getAbsoluteTimeAtCursor(Point screenPos) {
+    var canvasX = screenPos.x / xScale - xOffset;
+    var internalCanvasX = (canvasX * xScale - pianoKeysWidth) / xScale;
+
+    return internalCanvasX / timeGridScale;
+  }
+
+  MusicXMLPitch getPitchAtCursor(Point screenPos) {
+    var canvasY = screenPos.y / yScale - yOffset;
+    
+    var pitchDiv = (canvasY / 20).floor();
+    var rawOctave = (pitchDiv / 12).floor();
+    var noteID = pitchDiv - rawOctave * 12;
+
+    var pitch = new MusicXMLPitch();
+    pitch.note = pitchMapReverse[noteID];
+    pitch.octave = 8 - rawOctave;
+
+    return pitch;
   }
 
   @override
@@ -198,7 +233,7 @@ class PianoRollPainter extends CustomPainter {
     // set up x axis offset for grid
     // and scale appropriately
     canvas.scale(xScale, yScale);
-    canvas.translate(xOffset + pianoKeysWidth, yOffset);
+    canvas.translate(xOffset + pianoKeysWidth / xScale, yOffset);
 
     // draw time grid
     Paint beatDiv = Paint()..color = Colors.grey;
@@ -214,9 +249,9 @@ class PianoRollPainter extends CustomPainter {
             (getCurrentLeftmostTime() * beatType * divisions).floorToDouble();
         double leftMostBeatPos =
             leftMostBeat * timeGridScale / divisions / beatType;
-        int beatsInView = ((size.width / xScale) / beatDuration).floor();
+        int beatsInView = ((size.width / xScale) / beatDuration).ceil();
 
-        for (int i = -1; i < beatsInView; i++) {
+        for (int i = 0; i <= beatsInView; i++) {
           var curBeatIdx = leftMostBeat + i;
           if (curBeatIdx % beats == 0) {
             canvas.drawLine(Offset(leftMostBeatPos + i * beatDuration, 0),
@@ -231,14 +266,22 @@ class PianoRollPainter extends CustomPainter {
 
     // draw pitch grid
     Paint pitchGridDiv = Paint()..color = Colors.grey[200];
+    Paint pitchGridOctaveDiv = Paint()..color = Colors.grey[400];
     double firstVisibleKey = (yPos / 20).floorToDouble();
     int visibleKeys = ((size.height / yScale) / 20).floor();
-    print("visibleKeys: " + visibleKeys.toString());
     for (int i = 0; i < visibleKeys; i++) {
-      canvas.drawLine(
-          Offset(xPos - pianoKeysWidth * xScale, (firstVisibleKey + i) * 20),
-          Offset(xPos + size.width / xScale, (firstVisibleKey + i) * 20),
-          pitchGridDiv);
+      if((firstVisibleKey + i) % 12 == 0) {
+        canvas.drawLine(
+            Offset(xPos - pianoKeysWidth * xScale, (firstVisibleKey + i) * 20),
+            Offset(xPos + size.width / xScale, (firstVisibleKey + i) * 20),
+            pitchGridOctaveDiv);
+      }
+      else {
+        canvas.drawLine(
+            Offset(xPos - pianoKeysWidth * xScale, (firstVisibleKey + i) * 20),
+            Offset(xPos + size.width / xScale, (firstVisibleKey + i) * 20),
+            pitchGridDiv);
+      }
     }
 
     // draw notes on top of the grid
@@ -265,67 +308,58 @@ class PianoRollPainter extends CustomPainter {
           TextPainter tp = new TextPainter(text: lyricSpan, textAlign: TextAlign.left, textDirection: TextDirection.ltr);
           tp.layout();
           tp.paint(canvas, new Offset(
-            (event.absoluteTime * timeGridScale + xOffset + pianoKeysWidth + 20) * xScale, 
+            (event.absoluteTime * timeGridScale + xOffset + pianoKeysWidth / xScale + 20) * xScale, 
             (pitchToYAxis(event.pitch) + yOffset) * yScale - 20
           ));
         }
       }
     }
 
+    // back up translation
+    canvas.save();
+
     // set up piano keys scaling
     canvas.scale(1, yScale);
     canvas.translate(0, yOffset);
 
     Paint whiteKeys = Paint()..color = Colors.white;
-    Paint blueKeys = Paint()..color = Colors.blue;
+    Paint blackKeys = Paint()..color = Colors.black;
+    List<String> toDraw = ["B","A#","A","G#","G","F#","F","E","D#","D","C#","C"];
+
     double keyIdx = 0;
     for (int octave = 8; octave > 0; octave--) {
-      if (octave == 8) {
-        canvas.drawRect(
-            Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), blueKeys); // B
-      } else {
-        canvas.drawRect(Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20),
-            whiteKeys); // B
+      for(int noteID = 0; noteID < toDraw.length; noteID++) {
+        final note = toDraw[noteID];
+        if(note.endsWith("#")) {
+          canvas.drawRect(
+            Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), blackKeys);
+        }
+        else {
+          canvas.drawRect(
+            Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), whiteKeys);
+        }
+
+        keyIdx++;
       }
-      keyIdx++;
-      canvas.drawRect(
-          Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), Paint()); // A#
-      keyIdx++;
-      canvas.drawRect(
-          Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), whiteKeys); // A
-      keyIdx++;
-      canvas.drawRect(
-          Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), Paint()); // G#
-      keyIdx++;
-      canvas.drawRect(
-          Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), whiteKeys); // G
-      keyIdx++;
-      canvas.drawRect(
-          Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), Paint()); // F#
-      keyIdx++;
-      canvas.drawRect(
-          Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), whiteKeys); // F
-      keyIdx++;
-      canvas.drawRect(
-          Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), whiteKeys); // E
-      keyIdx++;
-      canvas.drawRect(
-          Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), Paint()); // D#
-      keyIdx++;
-      canvas.drawRect(
-          Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), whiteKeys); // D
-      keyIdx++;
-      canvas.drawRect(
-          Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), Paint()); // C#
-      keyIdx++;
-      if (octave == 1) {
-        canvas.drawRect(
-            Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), blueKeys); // C
-      } else {
-        canvas.drawRect(Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20),
-            whiteKeys); // C
+    }
+
+    // restore up translation
+    canvas.restore();
+
+    // paint piano key labels without stretch
+    keyIdx = 0;
+    for (int octave = 8; octave > 0; octave--) {
+      for(int noteID = 0; noteID < toDraw.length; noteID++) {
+        var note = toDraw[noteID];
+        var labelPainter = new TextPainter(
+          text: new TextSpan(style: new TextStyle(color: Colors.grey[600],fontSize: (12 * yScale)), text: note + octave.toString()), 
+          textAlign: TextAlign.right, 
+          textDirection: TextDirection.ltr,
+        )..layout();
+        labelPainter.paint(canvas, new Offset(pianoKeysWidth - 26 * yScale,((keyIdx) * 20 + yOffset) * yScale + labelPainter.height / 10));
+
+        keyIdx++;
       }
-      keyIdx++;
     }
   }
 
