@@ -11,8 +11,8 @@ class PianoRoll extends StatefulWidget {
 
 class _PianoRollState extends State<PianoRoll> {
   double pianoKeysWidth = 150.0;
-  double xOffset = 0.0;
-  double yOffset = 0.0;
+  double xOffset = -1.0;
+  double yOffset = -1.0;
   double xScale = 1;
   double yScale = 1;
   bool isCtrlKeyHeld = false;
@@ -47,99 +47,107 @@ class _PianoRollState extends State<PianoRoll> {
 
   @override
   Widget build(BuildContext context) {
-    var rectPainter = PianoRollPainter(
-        pianoKeysWidth, xOffset, yOffset, xScale, yScale, musicXML);
-
     return Row(mainAxisSize: MainAxisSize.max, children: [
-      Expanded(
-          child: RawKeyboardListener(
-              focusNode: focusNode,
-              autofocus: true,
-              onKey: (details) {
-                isShiftKeyHeld = details.isShiftPressed;
-                isAltKeyHeld = details.isAltPressed;
-                isCtrlKeyHeld = details.isControlPressed;
-              },
-              child: Listener(
-                onPointerSignal: (details) {
-                  if (details is PointerScrollEvent) {
-                    if (!focusNode.hasFocus) {
-                      focusNode.requestFocus();
-                    }
-                    setState(() {
-                      if (isShiftKeyHeld && focusNode.hasPrimaryFocus) {
-                        xOffset = xOffset - details.scrollDelta.dy;
+      Expanded(child: LayoutBuilder(builder: (context, constraits) {
+        if ((xOffset == -1) && (yOffset == -1)) {
+          // first run: scroll to C#6
+          xOffset = 0;
+          yOffset = -PianoRollPainter.pitchToYAxisEx("C#", 6);
 
-                        this.clampXY(rectPainter.lastHeight);
-                      } else {
-                        if (isAltKeyHeld) {
-                          double targetScaleX = max(0.25,
-                              min(4, xScale - details.scrollDelta.dy / 80));
-                          double xPointer = details.localPosition.dx;
-                          double xTarget = (xPointer / xScale - xOffset);
+          this.clampXY(constraits.maxHeight);
+        }
 
-                          xScale = targetScaleX;
-                          xOffset = -xTarget + xPointer / xScale;
-                        }
+        var rectPainter = PianoRollPainter(
+            pianoKeysWidth, xOffset, yOffset, xScale, yScale, musicXML);
 
-                        if (isCtrlKeyHeld) {
-                          double targetScaleY = max(0.25,
-                              min(4, yScale - details.scrollDelta.dy / 80));
-                          if (((rectPainter.lastHeight / targetScaleY) <=
-                                  1920) ||
-                              (details.scrollDelta.dy < 0)) {
-                            // only attempt scale if it wont look stupid
-                            double yPointer = details.localPosition.dy;
-                            double yTarget = (yPointer / yScale - yOffset);
-
-                            yScale = targetScaleY;
-                            yOffset = -yTarget + yPointer / yScale;
-                          }
-                        }
-
-                        if (!isAltKeyHeld && !isCtrlKeyHeld) {
-                          yOffset = yOffset - details.scrollDelta.dy;
-                        }
-
-                        this.clampXY(rectPainter.lastHeight);
-                      }
-                    });
+        return RawKeyboardListener(
+            focusNode: focusNode,
+            autofocus: true,
+            onKey: (details) {
+              isShiftKeyHeld = details.isShiftPressed;
+              isAltKeyHeld = details.isAltPressed;
+              isCtrlKeyHeld = details.isControlPressed;
+            },
+            child: Listener(
+              onPointerSignal: (details) {
+                if (details is PointerScrollEvent) {
+                  if (!focusNode.hasFocus) {
+                    focusNode.requestFocus();
                   }
-                },
-                onPointerDown: (details) {
-                  _dragging = true;
-                },
-                onPointerUp: (details) {
-                  _dragging = false;
-                },
-                onPointerMove: (details) {
-                  if (_dragging) {
-                    setState(() {
-                      xOffset = xOffset + details.delta.dx / xScale;
-                      yOffset = yOffset + details.delta.dy / yScale;
+                  setState(() {
+                    if (isShiftKeyHeld && focusNode.hasPrimaryFocus) {
+                      xOffset = xOffset - details.scrollDelta.dy;
 
                       this.clampXY(rectPainter.lastHeight);
-                    });
-                  }
-                },
-                onPointerHover: (details) {
-                  // final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
-                  // var pitch = rectPainter.getPitchAtCursor(screenPos.y);
-                  // var absTime = rectPainter.getAbsoluteTimeAtCursor(screenPos.x);
-                  // print("pitch: " + pitch.note + pitch.octave.toString());
-                  // print("absTime: " + absTime.toString());
+                    } else {
+                      if (isAltKeyHeld) {
+                        double targetScaleX = max(
+                            0.25, min(4, xScale - details.scrollDelta.dy / 80));
+                        double xPointer = details.localPosition.dx;
+                        double xTarget = (xPointer / xScale - xOffset);
 
-                  // var eventAtCursor = rectPainter.getMusicXMLEventAtScreenPos(screenPos);
-                  // print("event " + eventAtCursor.toString());
-                },
-                child: Container(
-                  color: Colors.white,
-                  child: CustomPaint(
-                    painter: rectPainter,
-                    child: Container(),
-                  ),
+                        xScale = targetScaleX;
+                        xOffset = -xTarget + xPointer / xScale;
+                      }
+
+                      if (isCtrlKeyHeld) {
+                        double targetScaleY = max(
+                            0.25, min(4, yScale - details.scrollDelta.dy / 80));
+                        if (((rectPainter.lastHeight / targetScaleY) <= 1920) ||
+                            (details.scrollDelta.dy < 0)) {
+                          // only attempt scale if it wont look stupid
+                          double yPointer = details.localPosition.dy;
+                          double yTarget = (yPointer / yScale - yOffset);
+
+                          yScale = targetScaleY;
+                          yOffset = -yTarget + yPointer / yScale;
+                        }
+                      }
+
+                      if (!isAltKeyHeld && !isCtrlKeyHeld) {
+                        yOffset = yOffset - details.scrollDelta.dy;
+                      }
+
+                      this.clampXY(rectPainter.lastHeight);
+                    }
+                  });
+                }
+              },
+              onPointerDown: (details) {
+                _dragging = true;
+              },
+              onPointerUp: (details) {
+                _dragging = false;
+              },
+              onPointerMove: (details) {
+                if (_dragging) {
+                  setState(() {
+                    xOffset = xOffset + details.delta.dx / xScale;
+                    yOffset = yOffset + details.delta.dy / yScale;
+
+                    this.clampXY(rectPainter.lastHeight);
+                  });
+                }
+              },
+              onPointerHover: (details) {
+                // final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
+                // var pitch = rectPainter.getPitchAtCursor(screenPos.y);
+                // var absTime = rectPainter.getAbsoluteTimeAtCursor(screenPos.x);
+                // print("pitch: " + pitch.note + pitch.octave.toString());
+                // print("absTime: " + absTime.toString());
+
+                // var eventAtCursor = rectPainter.getMusicXMLEventAtScreenPos(screenPos);
+                // print("event " + eventAtCursor.toString());
+              },
+              child: Container(
+                color: Colors.white,
+                child: CustomPaint(
+                  painter: rectPainter,
+                  child: Container(),
                 ),
-              )))
+              ),
+            ));
+      }))
     ]);
   }
 }
@@ -185,28 +193,27 @@ class PianoRollPainter extends CustomPainter {
     'A#': 1,
     'B': 0,
   };
-  static Map<int, String> pitchMapReverse = pitchMap.map((key, value) => new MapEntry(value,key));
-  double pitchToYAxis(MusicXMLPitch pitch) {
-    return pitchToYAxisEx(pitch.note,pitch.octave);
+  static Map<int, String> pitchMapReverse =
+      pitchMap.map((key, value) => new MapEntry(value, key));
+  static double pitchToYAxis(MusicXMLPitch pitch) {
+    return pitchToYAxisEx(pitch.note, pitch.octave);
   }
 
-  double pitchToYAxisEx(String note,int octave) {
-    return (pitchMap[note] * 20 + 12 * 20 * (8 - octave))
-        .toDouble();
+  static double pitchToYAxisEx(String note, int octave) {
+    return (pitchMap[note] * 20 + 12 * 20 * (8 - octave)).toDouble();
   }
 
   double getCurrentLeftmostTime() {
     return xInternalPos / timeGridScale;
   }
 
-  Point screenPosToCanvasPos(Point screenPos,bool outsideGrid) {
-    if(!outsideGrid) {
+  Point screenPosToCanvasPos(Point screenPos, bool outsideGrid) {
+    if (!outsideGrid) {
       return Point(
         (screenPos.x - pianoKeysWidth) / xScale - xOffset,
         screenPos.y / yScale - yOffset,
       );
-    }
-    else {
+    } else {
       return Point(
         screenPos.x / xScale - xOffset,
         screenPos.y / yScale - yOffset,
@@ -214,14 +221,13 @@ class PianoRollPainter extends CustomPainter {
     }
   }
 
-  Point canvasPosToScreenPos(Point canvasPos,bool outsideGrid) {
-    if(!outsideGrid) {
+  Point canvasPosToScreenPos(Point canvasPos, bool outsideGrid) {
+    if (!outsideGrid) {
       return Point(
         (canvasPos.x + xOffset) * xScale + pianoKeysWidth,
         (canvasPos.y + yOffset) * yScale,
       );
-    }
-    else {
+    } else {
       return Point(
         (canvasPos.x + xOffset) * xScale,
         (canvasPos.y + yOffset) * yScale,
@@ -238,7 +244,7 @@ class PianoRollPainter extends CustomPainter {
 
   MusicXMLPitch getPitchAtCursor(double screenPosY) {
     var canvasY = screenPosY / yScale - yOffset;
-    
+
     var pitchDiv = (canvasY / 20).floor();
     var rawOctave = (pitchDiv / 12).floor();
     var noteID = pitchDiv - rawOctave * 12;
@@ -254,16 +260,19 @@ class PianoRollPainter extends CustomPainter {
     // O(n), LOOK AWAY!
     // I DON'T CARE
 
-    final canvasPos = screenPosToCanvasPos(screenPos,false);
+    final canvasPos = screenPosToCanvasPos(screenPos, false);
 
-    for(final event in musicXML.events) {
-      if(event is MusicXMLEventNote) {
+    for (final event in musicXML.events) {
+      if (event is MusicXMLEventNote) {
         var noteX = event.absoluteTime * timeGridScale;
         var noteY = pitchToYAxis(event.pitch);
         var noteW = event.absoluteDuration * timeGridScale;
         var noteH = 20;
-        
-        if((noteX < canvasPos.x) && ((noteX+noteW) > canvasPos.x) && (noteY < canvasPos.y) && ((noteY+noteH) > canvasPos.y)) {
+
+        if ((noteX < canvasPos.x) &&
+            ((noteX + noteW) > canvasPos.x) &&
+            (noteY < canvasPos.y) &&
+            ((noteY + noteH) > canvasPos.y)) {
           return event;
         }
       }
@@ -294,13 +303,12 @@ class PianoRollPainter extends CustomPainter {
     double firstVisibleKey = (yPos / 20).floorToDouble();
     int visibleKeys = ((size.height / yScale) / 20).floor();
     for (int i = 0; i < visibleKeys; i++) {
-      if((firstVisibleKey + i) % 12 == 0) {
+      if ((firstVisibleKey + i) % 12 == 0) {
         canvas.drawLine(
             Offset(xPos - pianoKeysWidth * xScale, (firstVisibleKey + i) * 20),
             Offset(xPos + size.width / xScale, (firstVisibleKey + i) * 20),
             pitchGridOctaveDiv);
-      }
-      else {
+      } else {
         canvas.drawLine(
             Offset(xPos - pianoKeysWidth * xScale, (firstVisibleKey + i) * 20),
             Offset(xPos + size.width / xScale, (firstVisibleKey + i) * 20),
@@ -357,43 +365,85 @@ class PianoRollPainter extends CustomPainter {
     // draw *unscaled* stuff on top of midi notes
     for (final event in musicXML.events) {
       if (event is MusicXMLEventNote) {
-        if(event.lyric != "") {
-          TextSpan lyricSpan = new TextSpan(style: new TextStyle(color: Colors.grey[600]), text: event.lyric);
-          TextPainter tp = new TextPainter(text: lyricSpan, textAlign: TextAlign.left, textDirection: TextDirection.ltr);
+        if (event.lyric != "") {
+          TextSpan lyricSpan = new TextSpan(
+              style: new TextStyle(color: Colors.grey[600]), text: event.lyric);
+          TextPainter tp = new TextPainter(
+              text: lyricSpan,
+              textAlign: TextAlign.left,
+              textDirection: TextDirection.ltr);
           tp.layout();
-          tp.paint(canvas, new Offset(
-            (event.absoluteTime * timeGridScale + xOffset + pianoKeysWidth / xScale + 20) * xScale, 
-            (pitchToYAxis(event.pitch) + yOffset) * yScale - 20
-          ));
+          tp.paint(
+              canvas,
+              new Offset(
+                  (event.absoluteTime * timeGridScale +
+                          xOffset +
+                          pianoKeysWidth / xScale +
+                          20) *
+                      xScale,
+                  (pitchToYAxis(event.pitch) + yOffset) * yScale - 20));
         }
-      }
-      else if(event is MusicXMLEventTempo) {
+      } else if (event is MusicXMLEventTempo) {
         var yPos = pitchToYAxisEx("C", 6);
-        TextSpan lyricSpan = new TextSpan(style: new TextStyle(color: Colors.black,fontSize: 10 * yScale), text: "BPM: " + event.tempo.toStringAsFixed(2));
-        TextPainter tp = new TextPainter(text: lyricSpan, textAlign: TextAlign.left, textDirection: TextDirection.ltr);
+        TextSpan lyricSpan = new TextSpan(
+            style: new TextStyle(color: Colors.black, fontSize: 10 * yScale),
+            text: "BPM: " + event.tempo.toStringAsFixed(2));
+        TextPainter tp = new TextPainter(
+            text: lyricSpan,
+            textAlign: TextAlign.left,
+            textDirection: TextDirection.ltr);
         tp.layout();
         canvas.drawRect(
             Rect.fromLTWH(
-                (event.absoluteTime * timeGridScale + xOffset + pianoKeysWidth / xScale) * xScale, 
+                (event.absoluteTime * timeGridScale +
+                        xOffset +
+                        pianoKeysWidth / xScale) *
+                    xScale,
                 (yPos + yOffset) * yScale,
                 (tp.width + 20),
                 20 * yScale),
             Paint()..color = Colors.lightBlueAccent);
-        tp.paint(canvas, new Offset((event.absoluteTime * timeGridScale + xOffset + pianoKeysWidth / xScale) * xScale + 10,(yPos + yOffset) * yScale + tp.height / 4));
-      }
-      else if(event is MusicXMLEventTimeSignature) {
+        tp.paint(
+            canvas,
+            new Offset(
+                (event.absoluteTime * timeGridScale +
+                            xOffset +
+                            pianoKeysWidth / xScale) *
+                        xScale +
+                    10,
+                (yPos + yOffset) * yScale + tp.height / 4));
+      } else if (event is MusicXMLEventTimeSignature) {
         var yPos = pitchToYAxisEx("C#", 6);
-        TextSpan lyricSpan = new TextSpan(style: new TextStyle(color: Colors.black,fontSize: 10 * yScale), text: "Time Signature: " + event.beats.toString() + "/" + event.beatType.toString());
-        TextPainter tp = new TextPainter(text: lyricSpan, textAlign: TextAlign.left, textDirection: TextDirection.ltr);
+        TextSpan lyricSpan = new TextSpan(
+            style: new TextStyle(color: Colors.black, fontSize: 10 * yScale),
+            text: "Time Signature: " +
+                event.beats.toString() +
+                "/" +
+                event.beatType.toString());
+        TextPainter tp = new TextPainter(
+            text: lyricSpan,
+            textAlign: TextAlign.left,
+            textDirection: TextDirection.ltr);
         tp.layout();
         canvas.drawRect(
             Rect.fromLTWH(
-                (event.absoluteTime * timeGridScale + xOffset + pianoKeysWidth / xScale) * xScale, 
+                (event.absoluteTime * timeGridScale +
+                        xOffset +
+                        pianoKeysWidth / xScale) *
+                    xScale,
                 (yPos + yOffset) * yScale,
                 (tp.width + 20),
                 20 * yScale),
             Paint()..color = Colors.lightBlueAccent[100]);
-        tp.paint(canvas, new Offset((event.absoluteTime * timeGridScale + xOffset + pianoKeysWidth / xScale) * xScale + 10,(yPos + yOffset) * yScale + tp.height / 4));
+        tp.paint(
+            canvas,
+            new Offset(
+                (event.absoluteTime * timeGridScale +
+                            xOffset +
+                            pianoKeysWidth / xScale) *
+                        xScale +
+                    10,
+                (yPos + yOffset) * yScale + tp.height / 4));
       }
     }
 
@@ -411,25 +461,35 @@ class PianoRollPainter extends CustomPainter {
 
     Paint whiteKeys = Paint()..color = Colors.white;
     Paint blackKeys = Paint()..color = Colors.black;
-    List<String> toDraw = ["B","A#","A","G#","G","F#","F","E","D#","D","C#","C"];
+    List<String> toDraw = [
+      "B",
+      "A#",
+      "A",
+      "G#",
+      "G",
+      "F#",
+      "F",
+      "E",
+      "D#",
+      "D",
+      "C#",
+      "C"
+    ];
 
     double keyIdx = 0;
     for (int octave = 8; octave > 0; octave--) {
-      for(int noteID = 0; noteID < toDraw.length; noteID++) {
+      for (int noteID = 0; noteID < toDraw.length; noteID++) {
         final note = toDraw[noteID];
-        if(note.endsWith("#")) {
+        if (note.endsWith("#")) {
           canvas.drawRect(
-            Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), blackKeys);
-        }
-        else {
+              Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), blackKeys);
+        } else {
           canvas.drawRect(
-            Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), whiteKeys);
+              Rect.fromLTWH(0, (keyIdx) * 20, pianoKeysWidth, 20), whiteKeys);
         }
 
-        canvas.drawLine(
-            Offset(0, (keyIdx) * 20),
-            Offset(pianoKeysWidth, (keyIdx) * 20),
-            pitchGridDiv);
+        canvas.drawLine(Offset(0, (keyIdx) * 20),
+            Offset(pianoKeysWidth, (keyIdx) * 20), pitchGridDiv);
 
         keyIdx++;
       }
@@ -441,14 +501,20 @@ class PianoRollPainter extends CustomPainter {
     // paint piano key labels without stretch
     keyIdx = 0;
     for (int octave = 8; octave > 0; octave--) {
-      for(int noteID = 0; noteID < toDraw.length; noteID++) {
+      for (int noteID = 0; noteID < toDraw.length; noteID++) {
         var note = toDraw[noteID];
         var labelPainter = new TextPainter(
-          text: new TextSpan(style: new TextStyle(color: Colors.grey[600],fontSize: (12 * yScale)), text: note + octave.toString()), 
-          textAlign: TextAlign.right, 
+          text: new TextSpan(
+              style: new TextStyle(
+                  color: Colors.grey[600], fontSize: (12 * yScale)),
+              text: note + octave.toString()),
+          textAlign: TextAlign.right,
           textDirection: TextDirection.ltr,
         )..layout();
-        labelPainter.paint(canvas, new Offset(pianoKeysWidth - 26 * yScale,((keyIdx) * 20 + yOffset) * yScale + labelPainter.height / 10));
+        labelPainter.paint(
+            canvas,
+            new Offset(pianoKeysWidth - 26 * yScale,
+                ((keyIdx) * 20 + yOffset) * yScale + labelPainter.height / 10));
 
         keyIdx++;
       }
