@@ -84,7 +84,7 @@ class _PianoRollState extends State<PianoRoll> {
                       if (isAltKeyHeld) {
                         double targetScaleX = max(
                             0.25, min(4, xScale - details.scrollDelta.dy / 80));
-                        double xPointer = details.localPosition.dx;
+                        double xPointer = details.localPosition.dx - pianoKeysWidth;
                         double xTarget = (xPointer / xScale - xOffset);
 
                         xScale = targetScaleX;
