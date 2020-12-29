@@ -54,9 +54,9 @@ class _PianoRollState extends State<PianoRoll> {
           // first run: scroll to C#6
           xOffset = 0;
           yOffset = -PianoRollPainter.pitchToYAxisEx("C#", 6);
-
-          this.clampXY(constraits.maxHeight);
         }
+        
+        this.clampXY(constraits.maxHeight);
 
         var rectPainter = PianoRollPainter(
             pianoKeysWidth, xOffset, yOffset, xScale, yScale, musicXML, selectedNotes);
