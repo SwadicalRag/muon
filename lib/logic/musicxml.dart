@@ -257,13 +257,12 @@ class MusicXML {
     // who cares about computational efficiency anyway
     
     int gcd(int a,int b) => (b == 0) ? a : gcd(b, a % b);
-    int gcdArray(List<int> a, int offset) {
-      if(a.length < (offset + 1)) {
-        return gcd(a[offset],gcdArray(a,offset + 1));
+    int gcdArray(List<int> a) {
+      int result = a[0];
+      for(int i = 1; i < a.length; i++){
+        result = gcd(result, a[i]);
       }
-      else {
-        return a[offset];
-      }
+      return result;
     }
 
     List<int> allDurations = [];
@@ -273,7 +272,7 @@ class MusicXML {
       }
     }
 
-    var lcmDuration = gcdArray(allDurations,1);
+    var lcmDuration = gcdArray(allDurations);
 
     if(lcmDuration > 1) {
       for(final event in events) {

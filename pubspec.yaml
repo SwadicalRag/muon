@@ -24,6 +24,8 @@ dependencies:
   flutter:
     sdk: flutter
   universal_html: ^1.2.3
+  juicer: '^0.10.0'
+  dart_midi: ^1.0.1
 
 dev_dependencies:
   flutter_test:
