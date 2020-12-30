@@ -860,20 +860,5 @@ String serializeMusicXML(MusicXML musicXML) {
 }
 
 MusicXML getDefaultFile() {
-  return parseFile('lib/logic/7_kokoro.musicxml');
   return parseFile("E:\\Work\\Neutrino\\NEUTRINO\\score\\musicxml\\9_mochistu.musicxml");
-}
-
-void main() {
-  final musicXML = parseFile('7_kokoro.musicxml');
-
-  print(serializeMusicXML(musicXML));
-
-  // for(final event in musicXML.events) {
-  //   print(event.absoluteTime.toString());
-  //   if(event is MusicXMLEventNote) {
-  //     print(event.lyric);
-  //     print(event.pitch?.note);
-  //   }
-  // }
 }
