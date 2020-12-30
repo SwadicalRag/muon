@@ -117,7 +117,7 @@ class _MuonEditorState extends State<MuonEditor> {
                 final noteAtCursor = pianoRoll.painter.getNoteAtScreenPos(mousePos);
                 
                 if(noteAtCursor != null) {
-                  var mouseBeats = pianoRoll.painter.getAbsoluteTimeAtCursor(mousePos.x);
+                  var mouseBeats = pianoRoll.painter.getBeatNumAtCursor(mousePos.x);
                   var endBeat = (noteAtCursor.startAtTime.value + noteAtCursor.duration.value) / currentProject.timeUnitsPerBeat.value;
 
                   var cursorBeatEndDistance = (endBeat - mouseBeats) * pianoRoll.state.xScale * pianoRoll.painter.pixelsPerBeat;
@@ -152,7 +152,7 @@ class _MuonEditorState extends State<MuonEditor> {
                   var pitch = pianoRoll.painter.getPitchAtCursor(mousePos.y);
                   note.octave.value = pitch.octave;
                   note.note.value = pitch.note;
-                  note.startAtTime.value = (pianoRoll.painter.getAbsoluteTimeAtCursor(mousePos.x) * currentProject.timeUnitsPerBeat.value).floor();
+                  note.startAtTime.value = (pianoRoll.painter.getBeatNumAtCursor(mousePos.x) * currentProject.timeUnitsPerBeat.value).floor();
                   note.duration.value = 1;
                   currentProject.voices[0].notes.add(note);
                 }
@@ -169,7 +169,7 @@ class _MuonEditorState extends State<MuonEditor> {
                 currentProject.selectedNotes[note] = true;
                 
                 var originalFirstNote = originalNoteData[note];
-                var mouseBeats = pianoRoll.painter.getAbsoluteTimeAtCursor(mouseFirstPos.x);
+                var mouseBeats = pianoRoll.painter.getBeatNumAtCursor(mouseFirstPos.x);
                 var endBeat = (originalFirstNote.startAtTime + originalFirstNote.duration) / currentProject.timeUnitsPerBeat.value;
 
                 var cursorBeatEndDistance = (endBeat - mouseBeats) * pianoRoll.state.xScale * pianoRoll.painter.pixelsPerBeat;
@@ -179,7 +179,7 @@ class _MuonEditorState extends State<MuonEditor> {
                 final fpDeltaSemiTones = pianoRoll.painter.screenPixelsToSemitones(mouseFirstPos.y) % 1;
                 final deltaSemiTones = (pianoRoll.painter.screenPixelsToSemitones(mousePos.y - mouseFirstPos.y) + fpDeltaSemiTones).floor();
 
-                final fpDeltaBeats = (pianoRoll.painter.getAbsoluteTimeAtCursor(mouseFirstPos.x) % 1);
+                final fpDeltaBeats = (pianoRoll.painter.getBeatNumAtCursor(mouseFirstPos.x) % 1);
                 final deltaBeats = pianoRoll.painter.screenPixelsToBeats(mousePos.x - mouseFirstPos.x) + fpDeltaBeats / currentProject.currentSubdivision.value;
                 final deltaSegments = deltaBeats * currentProject.currentSubdivision.value;
                 final deltaSegmentsFixed = deltaSegments.floor();
