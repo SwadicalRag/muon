@@ -23,7 +23,6 @@ class _PianoRollState extends State<PianoRoll> {
   bool isShiftKeyHeld = false;
   bool _dragging = false;
   bool _selecting = false;
-  final FocusNode focusNode = FocusNode();
   MusicXML musicXML = getDefaultFile();
   Map<MusicXMLEventNote,bool> selectedNotes = {};
   Point _firstSelectionPos;
@@ -88,11 +87,8 @@ class _PianoRollState extends State<PianoRoll> {
         return Listener(
           onPointerSignal: (details) {
             if (details is PointerScrollEvent) {
-              if (!focusNode.hasFocus) {
-                focusNode.requestFocus();
-              }
               setState(() {
-                if (isShiftKeyHeld && focusNode.hasPrimaryFocus) {
+                if (isShiftKeyHeld) {
                   xOffset = xOffset - details.scrollDelta.dy / xScale;
 
                   this.clampXY(rectPainter.lastHeight);
