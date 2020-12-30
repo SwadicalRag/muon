@@ -1,8 +1,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:muon/controllers/muonproject.dart';
 import 'package:muon/main.dart';
 import 'package:muon/pianoroll.dart';
+
+final currentProject = MuonProjectController.defaultProject();
 
 class MuonEditor extends StatefulWidget {
   MuonEditor() : super();
@@ -102,7 +105,7 @@ class _MuonEditorState extends State<MuonEditor> {
         textDirection: TextDirection.rtl,
         children: [
           Expanded(
-            child: PianoRoll()
+            child: PianoRoll(currentProject,{})
           ),
           Container(
             width: 400,

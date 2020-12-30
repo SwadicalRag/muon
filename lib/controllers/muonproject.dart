@@ -19,6 +19,47 @@ class MuonProjectController extends GetxController {
 
   final voices = RxList<MuonVoiceController>([]);
 
+  static MuonProjectController defaultProject() {
+    final out = MuonProjectController();
+
+    final baseVoice = MuonVoiceController();
+    baseVoice.notes.add(
+      MuonNoteController()
+        ..startAtTime.value = 0
+        ..duration.value = 1
+        ..note.value = "C"
+        ..octave.value = 4
+        ..lyric.value = "ら"
+    );
+    baseVoice.notes.add(
+      MuonNoteController()
+        ..startAtTime.value = 1
+        ..duration.value = 1
+        ..note.value = "D"
+        ..octave.value = 4
+        ..lyric.value = "ら"
+    );
+    baseVoice.notes.add(
+      MuonNoteController()
+        ..startAtTime.value = 2
+        ..duration.value = 1
+        ..note.value = "E"
+        ..octave.value = 4
+        ..lyric.value = "ら"
+    );
+    baseVoice.notes.add(
+      MuonNoteController()
+        ..startAtTime.value = 3
+        ..duration.value = 1
+        ..note.value = "F"
+        ..octave.value = 4
+        ..lyric.value = "ら"
+    );
+    out.voices.add(baseVoice);
+
+    return out;
+  }
+
   void factorTimeUnitsPerBeat() {
     int gcd(int a,int b) => (b == 0) ? a : gcd(b, a % b);
     int gcdArray(List<int> a) {
