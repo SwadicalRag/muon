@@ -21,6 +21,15 @@ class MuonProjectController extends GetxController {
 
   // other
   final selectedNotes = Map<MuonNoteController,bool>().obs;
+  
+  // subdivision manager
+  final currentSubdivision = 1.obs;
+
+  void setSubdivision(int subdivision) {
+    factorTimeUnitsPerBeat();
+    setTimeUnitsPerBeat(timeUnitsPerBeat.value * subdivision);
+    currentSubdivision.value = subdivision;
+  }
 
   static MuonProjectController defaultProject() {
     final out = MuonProjectController();
@@ -59,6 +68,8 @@ class MuonProjectController extends GetxController {
         ..lyric.value = "ら"
     );
     out.voices.add(baseVoice);
+
+    out.setSubdivision(4);
 
     return out;
   }
@@ -106,6 +117,8 @@ class MuonProjectController extends GetxController {
     }
 
     timeUnitsPerBeat.value = newTimeUnitsPerBeat;
+
+    currentSubdivision.value = 1;
   }
 
   bool importVoiceFromMIDIFile(String midiFilePath,bool importTimeMetadata) {
