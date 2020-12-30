@@ -12,6 +12,7 @@ class MuonEditor extends StatefulWidget {
 class _MuonEditorState extends State<MuonEditor> {
   @override
   Widget build(BuildContext context) {
+    final themeData = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text("Muon Editor"),
@@ -95,7 +96,7 @@ class _MuonEditorState extends State<MuonEditor> {
           Container(
             width: 400,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: themeData.scaffoldBackgroundColor,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.5),

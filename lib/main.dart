@@ -23,6 +23,11 @@ class MyApp extends StatelessWidget {
       title: 'Muon',
       theme: ThemeData(
         primarySwatch: Colors.purple,
+        brightness: Brightness.light,
+      ),
+      darkTheme: ThemeData(
+        primarySwatch: Colors.purple,
+        brightness: Brightness.dark,
       ),
       home: MuonEditor(),
     );
