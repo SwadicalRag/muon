@@ -19,9 +19,12 @@ class _PianoRollState extends State<PianoRoll> {
   bool isAltKeyHeld = false;
   bool isShiftKeyHeld = false;
   bool _dragging = false;
+  bool _selecting = false;
   final FocusNode focusNode = FocusNode();
   MusicXML musicXML = getDefaultFile();
   Map<MusicXMLEventNote,bool> selectedNotes = {};
+  Point _firstSelectionPos;
+  Rect selectionRect;
 
   void clampXY(double renderBoxHeight) {
     xOffset = min(0, xOffset);
@@ -55,11 +58,11 @@ class _PianoRollState extends State<PianoRoll> {
           xOffset = 0;
           yOffset = -PianoRollPainter.pitchToYAxisEx("C#", 6);
         }
-        
+
         this.clampXY(constraits.maxHeight);
 
         var rectPainter = PianoRollPainter(
-            pianoKeysWidth, xOffset, yOffset, xScale, yScale, musicXML, selectedNotes);
+            pianoKeysWidth, xOffset, yOffset, xScale, yScale, musicXML, selectedNotes, selectionRect);
 
         return RawKeyboardListener(
             focusNode: focusNode,
@@ -77,7 +80,7 @@ class _PianoRollState extends State<PianoRoll> {
                   }
                   setState(() {
                     if (isShiftKeyHeld && focusNode.hasPrimaryFocus) {
-                      xOffset = xOffset - details.scrollDelta.dy;
+                      xOffset = xOffset - details.scrollDelta.dy / xScale;
 
                       this.clampXY(rectPainter.lastHeight);
                     } else {
@@ -115,18 +118,45 @@ class _PianoRollState extends State<PianoRoll> {
                 }
               },
               onPointerDown: (details) {
-                _dragging = true;
+                if((details.buttons & kMiddleMouseButton) == kMiddleMouseButton) {
+                  _dragging = true;
+                }
+                else if((details.buttons & kPrimaryMouseButton) == kPrimaryMouseButton) {
+                  final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
+                  _selecting = true;
+                  _firstSelectionPos = screenPos;
+                  setState(() {
+                    selectionRect = Rect.fromLTRB(details.localPosition.dx, details.localPosition.dy, details.localPosition.dx, details.localPosition.dy);
+                  });
+                }
               },
               onPointerUp: (details) {
+                if(_selecting) {
+                  _firstSelectionPos = null;
+                  setState(() {
+                    selectionRect = null;
+                  });
+                }
+
                 _dragging = false;
+                _selecting = false;
               },
               onPointerMove: (details) {
-                if (_dragging) {
+                if (_dragging == true) {
                   setState(() {
                     xOffset = xOffset + details.delta.dx / xScale;
                     yOffset = yOffset + details.delta.dy / yScale;
 
                     this.clampXY(rectPainter.lastHeight);
+                  });
+                }
+                else if (_selecting == true) {
+                  setState(() {
+                    var left = min(_firstSelectionPos.x, details.localPosition.dx);
+                    var right = max(_firstSelectionPos.x, details.localPosition.dx);
+                    var top = min(_firstSelectionPos.y, details.localPosition.dy);
+                    var bottom = max(_firstSelectionPos.y, details.localPosition.dy);
+                    selectionRect = Rect.fromLTRB(left,top,right,bottom);
                   });
                 }
               },
@@ -161,7 +191,7 @@ class _PianoRollState extends State<PianoRoll> {
 
 class PianoRollPainter extends CustomPainter {
   PianoRollPainter(this.pianoKeysWidth, this.xOffset, this.yOffset, this.xScale,
-      this.yScale, this.musicXML, this.selectedNotes);
+      this.yScale, this.musicXML, this.selectedNotes, this.selectionRect);
   final double pianoKeysWidth;
   final double xOffset;
   final double yOffset;
@@ -169,6 +199,7 @@ class PianoRollPainter extends CustomPainter {
   final double yScale;
   final MusicXML musicXML;
   final Map<MusicXMLEventNote,bool> selectedNotes;
+  final Rect selectionRect;
 
   double lastHeight = 0;
   double lastWidth = 0;
@@ -484,6 +515,18 @@ class PianoRollPainter extends CustomPainter {
 
     // back up translation
     canvas.save();
+
+    // draw selection rect on untransformed canvas
+    if(selectionRect != null) {
+      final selPaintBorder = Paint();
+      selPaintBorder.color = Colors.blue.withOpacity(0.75);
+      selPaintBorder.style = PaintingStyle.stroke;
+      final selPaint = Paint();
+      selPaint.color = Colors.blue.withOpacity(0.3);
+      selPaint.style = PaintingStyle.fill;
+      canvas.drawRect(selectionRect,selPaintBorder);
+      canvas.drawRect(selectionRect,selPaint);
+    }
 
     // set up piano keys scaling
     canvas.scale(1, yScale);
