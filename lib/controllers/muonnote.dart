@@ -10,6 +10,17 @@ class MuonNoteController extends GetxController {
   final startAtTime = 0.obs;
   final duration = 0.obs;
 
+  void addSemitones(int deltaSemitones) {
+    final midiNotes = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+
+    final currentNoteID = midiNotes.indexOf(this.note.value);
+    final deltaOctave = ((deltaSemitones + currentNoteID) / 12).floor();
+    final fixedDeltaSemitones = deltaSemitones - deltaOctave * 12;
+    
+    note.value = midiNotes[currentNoteID + fixedDeltaSemitones];
+    octave.value = octave.value + deltaOctave;
+  }
+
   MuonNote toSerializable() {
     final out = MuonNote();
     out.note = this.note.value;
