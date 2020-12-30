@@ -19,6 +19,9 @@ class MuonProjectController extends GetxController {
 
   final voices = RxList<MuonVoiceController>([]);
 
+  // other
+  final selectedNotes = Map<MuonNoteController,bool>().obs;
+
   static MuonProjectController defaultProject() {
     final out = MuonProjectController();
 

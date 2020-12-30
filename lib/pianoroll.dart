@@ -1,9 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
 import 'package:muon/controllers/muonnote.dart';
 import 'dart:math';
 
@@ -15,20 +12,30 @@ class PianoRollPitch {
   int octave;
 }
 
+typedef _onClickCallbackType = void Function(PianoRollPainter pianoRoll,Point mousePos);
+typedef _onDragCallbackType = void Function(PianoRollPainter pianoRoll,Point mouseCurrentPos,Point mouseStartPos,MuonNoteController note,Map<MuonNoteController,MuonNote> originalNoteData);
+typedef _onSelectCallbackType = void Function(PianoRollPainter pianoRoll,Rect selectionBox);
+
 class PianoRoll extends StatefulWidget {
-  PianoRoll(this.project,this.selectedNotes);
+  PianoRoll(this.project,this.selectedNotes,this._onClickCallback,this._onDragCallback,this._onSelectCallback);
 
   final MuonProjectController project;
   final Map<MuonNoteController,bool> selectedNotes;
+  final _onClickCallbackType _onClickCallback;
+  final _onDragCallbackType _onDragCallback;
+  final _onSelectCallbackType _onSelectCallback;
 
   @override
-  _PianoRollState createState() => _PianoRollState(project,selectedNotes);
+  _PianoRollState createState() => _PianoRollState(project,selectedNotes,_onClickCallback,_onDragCallback,_onSelectCallback);
 }
 
 class _PianoRollState extends State<PianoRoll> {
-  _PianoRollState(this.project,this.selectedNotes);
+  _PianoRollState(this.project,this.selectedNotes,this._onClickCallback,this._onDragCallback,this._onSelectCallback);
   final MuonProjectController project;
   final Map<MuonNoteController,bool> selectedNotes;
+  final _onClickCallbackType _onClickCallback;
+  final _onDragCallbackType _onDragCallback;
+  final _onSelectCallbackType _onSelectCallback;
   
   double pianoKeysWidth = 150.0;
   double xOffset = -1.0;
@@ -38,10 +45,14 @@ class _PianoRollState extends State<PianoRoll> {
   bool isCtrlKeyHeld = false;
   bool isAltKeyHeld = false;
   bool isShiftKeyHeld = false;
+  bool _internalMouseDown = false;
+  bool _panning = false;
   bool _dragging = false;
+  MuonNoteController _internalDragFirstNote;
   bool _selecting = false;
-  Point _firstSelectionPos;
+  Point _firstMouseDownPos;
   Rect selectionRect;
+  Map<MuonNoteController,MuonNote> noteDragOriginalData;
 
   @override
   void initState() {
@@ -144,30 +155,72 @@ class _PianoRollState extends State<PianoRoll> {
           },
           onPointerDown: (details) {
             if((details.buttons & kMiddleMouseButton) == kMiddleMouseButton) {
-              _dragging = true;
+              _panning = true;
             }
             else if((details.buttons & kPrimaryMouseButton) == kPrimaryMouseButton) {
               final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
-              _selecting = true;
-              _firstSelectionPos = screenPos;
-              setState(() {
-                selectionRect = Rect.fromLTRB(details.localPosition.dx, details.localPosition.dy, details.localPosition.dx, details.localPosition.dy);
-              });
+              _firstMouseDownPos = screenPos;
+              _internalMouseDown = true;
             }
           },
           onPointerUp: (details) {
             if(_selecting) {
-              _firstSelectionPos = null;
               setState(() {
+                _onSelectCallback(rectPainter,selectionRect);
                 selectionRect = null;
               });
             }
+            else if(_panning) {
+              // do nothing
+            }
+            else if(_dragging) {
+              // dragging a note!
+              setState(() {
+                _onDragCallback(rectPainter,Point(details.localPosition.dx,details.localPosition.dy),_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
+              });
+            }
+            else {
+              // click!
+              setState(() {
+                _onClickCallback(rectPainter,Point(details.localPosition.dx,details.localPosition.dy));
+              });
+            }
 
-            _dragging = false;
+            _panning = false;
             _selecting = false;
+            _dragging = false;
+            _internalMouseDown = false;
+            _firstMouseDownPos = null;
+            _internalDragFirstNote = null;
           },
           onPointerMove: (details) {
-            if (_dragging == true) {
+            if(_internalMouseDown) {
+              _internalMouseDown = false;
+
+              // mouse started moving for the first time after mousedown
+
+              final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
+              final noteAtCursor = rectPainter.getNoteAtScreenPos(screenPos);
+              
+              if(noteAtCursor != null) {
+                _dragging = true;
+                _internalDragFirstNote = noteAtCursor;
+
+                noteDragOriginalData = {};
+                noteDragOriginalData[noteAtCursor] = noteAtCursor.toSerializable();
+
+                for(final note in selectedNotes.keys) {
+                  if(selectedNotes[note]) {
+                    noteDragOriginalData[note] = note.toSerializable();
+                  }
+                }
+              }
+              else {
+                _selecting = true;
+              }
+            }
+
+            if (_panning == true) {
               setState(() {
                 xOffset = xOffset + details.delta.dx / xScale;
                 yOffset = yOffset + details.delta.dy / yScale;
@@ -177,11 +230,18 @@ class _PianoRollState extends State<PianoRoll> {
             }
             else if (_selecting == true) {
               setState(() {
-                var left = min(_firstSelectionPos.x, details.localPosition.dx);
-                var right = max(_firstSelectionPos.x, details.localPosition.dx);
-                var top = min(_firstSelectionPos.y, details.localPosition.dy);
-                var bottom = max(_firstSelectionPos.y, details.localPosition.dy);
+                var left = min(_firstMouseDownPos.x, details.localPosition.dx);
+                var right = max(_firstMouseDownPos.x, details.localPosition.dx);
+                var top = min(_firstMouseDownPos.y, details.localPosition.dy);
+                var bottom = max(_firstMouseDownPos.y, details.localPosition.dy);
                 selectionRect = Rect.fromLTRB(left,top,right,bottom);
+
+                _onSelectCallback(rectPainter,selectionRect);
+              });
+            }
+            else if (_dragging == true) {
+              setState(() {
+                _onDragCallback(rectPainter,Point(details.localPosition.dx,details.localPosition.dy),_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
               });
             }
           },
@@ -284,6 +344,24 @@ class PianoRollPainter extends CustomPainter {
     }
   }
 
+  Rect screenRectToCanvasRect(Rect screenRect, bool outsideGrid) {
+    if (!outsideGrid) {
+      return Rect.fromLTRB(
+        (screenRect.left - pianoKeysWidth) / xScale - xOffset,
+        screenRect.top / yScale - yOffset,
+        (screenRect.right - pianoKeysWidth) / xScale - xOffset,
+        screenRect.bottom / yScale - yOffset,
+      );
+    } else {
+      return Rect.fromLTRB(
+        screenRect.left / xScale - xOffset,
+        screenRect.top / yScale - yOffset,
+        screenRect.right / xScale - xOffset,
+        screenRect.bottom / yScale - yOffset,
+      );
+    }
+  }
+
   Point canvasPosToScreenPos(Point canvasPos, bool outsideGrid) {
     if (!outsideGrid) {
       return Point(
@@ -303,6 +381,14 @@ class PianoRollPainter extends CustomPainter {
     var internalCanvasX = (canvasX * xScale - pianoKeysWidth) / xScale;
 
     return internalCanvasX / pixelsPerBeat;
+  }
+
+  double screenPixelsToBeats(double screenPixels) {
+    return (screenPixels / xScale) / pixelsPerBeat;
+  }
+
+  double screenPixelsToSemitones(double screenPixels) {
+    return ((-screenPixels / yScale) / 20);
   }
 
   PianoRollPitch getPitchAtCursor(double screenPosY) {
@@ -344,6 +430,36 @@ class PianoRollPainter extends CustomPainter {
     return null;
   }
 
+  Rect getNoteRect(MuonNoteController note) {
+    var noteL = note.startAtTime * pixelsPerBeat;
+    var noteT = pitchToYAxis(note);
+    var noteR = noteL + (note.duration * pixelsPerBeat);
+    var noteB = noteT + 20;
+
+    return Rect.fromLTRB(noteL, noteT, noteR, noteB);
+  }
+
+  List<MuonNoteController> getNotesTouchingRect(Rect screenRect) {
+    // O(n), LOOK AWAY!
+    // I STILL DON'T CARE
+
+    final canvasRect = screenRectToCanvasRect(screenRect, false);
+
+    final List<MuonNoteController> out = [];
+
+    for (final voice in project.voices) {
+      for (final note in voice.notes) {
+        var noteRect = getNoteRect(note);
+
+        if (canvasRect.overlaps(noteRect)) {
+          out.add(note);
+        }
+      }
+    }
+
+    return out;
+  }
+
   static final noteColors = [
     Colors.blue,
     Colors.purple,
@@ -358,8 +474,6 @@ class PianoRollPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Clip to viewable area
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    print("Paint");
 
     // Save current state
     canvas.save();
@@ -416,7 +530,7 @@ class PianoRollPainter extends CustomPainter {
       for (final note in voice.notes) {
         // print("Abs" + (event.absoluteTime).toString());
         var noteColor = noteColors[voiceID % noteColors.length];
-        if(selectedNotes.containsKey(note)) {
+        if(selectedNotes.containsKey(note) && selectedNotes[note]) {
           final xBorderThickness = 5;
           final yBorderThickness = 5;
           if(themeData.brightness == Brightness.dark) {
