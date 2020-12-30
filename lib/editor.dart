@@ -77,7 +77,7 @@ class _MuonEditorState extends State<MuonEditor> {
             icon: const Icon(Icons.save),
             tooltip: "Save",
             onPressed: () {
-              
+              currentProject.save();
             },
           ),
           IconButton(
@@ -91,7 +91,7 @@ class _MuonEditorState extends State<MuonEditor> {
             icon: const Icon(Icons.create),
             tooltip: "New project",
             onPressed: () {
-              
+              currentProject.updateWith(MuonProjectController.defaultProject());
             },
           ),
           SizedBox(width: 20,),

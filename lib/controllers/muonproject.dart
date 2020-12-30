@@ -31,8 +31,29 @@ class MuonProjectController extends GetxController {
     currentSubdivision.value = subdivision;
   }
 
+  void updateWith(MuonProjectController controller) {
+    this.projectDir.value = controller.projectDir.value;
+    this.bpm.value = controller.bpm.value;
+    this.timeUnitsPerBeat.value = controller.timeUnitsPerBeat.value;
+    this.beatsPerMeasure.value = controller.beatsPerMeasure.value;
+    this.beatValue.value = controller.beatValue.value;
+    this.currentSubdivision.value = controller.currentSubdivision.value;
+
+    this.voices.clear();
+    for(final voice in controller.voices) {this.voices.add(voice);}
+
+    this.selectedNotes.clear();
+    for(final selectedNoteKey in controller.selectedNotes.keys) {
+      this.selectedNotes[selectedNoteKey] = controller.selectedNotes[selectedNoteKey];
+    }
+  }
+
   static MuonProjectController defaultProject() {
     final out = MuonProjectController();
+
+    print("make");
+
+    out.projectDir.value = "startup";
 
     final baseVoice = MuonVoiceController();
     baseVoice.notes.add(
