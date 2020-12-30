@@ -1,5 +1,7 @@
 
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:muon/main.dart';
 import 'package:muon/pianoroll.dart';
 
 class MuonEditor extends StatefulWidget {
@@ -52,6 +54,15 @@ class _MuonEditorState extends State<MuonEditor> {
             onPressed: () {
               
             },
+          ),
+          SizedBox(width: 40,),
+          Obx(() => IconButton(
+              icon: darkMode.value ? const Icon(Icons.lightbulb) : const Icon(Icons.lightbulb_outline),
+              tooltip: darkMode.value ? "Lights on" : "Lights out",
+              onPressed: () {
+                darkMode.value = !darkMode.value;
+              },
+            ),
           ),
           SizedBox(width: 40,),
           IconButton(

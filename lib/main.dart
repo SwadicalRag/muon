@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:get/get.dart';
 
 import 'package:flutter/material.dart';
 import 'package:muon/editor.dart';
@@ -15,12 +16,15 @@ void main() {
   runApp(MyApp());
 }
 
+final darkMode = false.obs;
+
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return Obx(() => MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Muon',
+      themeMode: darkMode.value ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
         primarySwatch: Colors.purple,
         brightness: Brightness.light,
@@ -30,6 +34,6 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.dark,
       ),
       home: MuonEditor(),
-    );
+    ));
   }
 }
