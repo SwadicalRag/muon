@@ -51,8 +51,6 @@ class MuonProjectController extends GetxController {
   static MuonProjectController defaultProject() {
     final out = MuonProjectController();
 
-    print("make");
-
     out.projectDir.value = "startup";
 
     final baseVoice = MuonVoiceController();
