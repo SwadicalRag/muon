@@ -465,6 +465,12 @@ MusicXML parseFile(String filePath) {
   return out;
 }
 
+class NoteResolution {
+  String noteType;
+  int dots;
+  double beats;
+}
+
 String serializeMusicXML(MusicXML musicXML) {
   String out = "";
   int indentLevel = 0;
@@ -566,11 +572,17 @@ String serializeMusicXML(MusicXML musicXML) {
   int lastBeatType = 1;
   double curBeat = 0;
   Map<double,String> divisionToNoteType = {};
+  Map<double,String> divisionToDottedNoteType = {};
+  Map<double,String> divisionToDoubleDottedNoteType = {};
+  Map<double,String> divisionToTripleDottedNoteType = {};
   void regenerateDivisionMapping() {
     divisionToNoteType = {};
     double curDiv = (lastDivision * lastBeatType).toDouble();
     void addDiv(String type) {
       divisionToNoteType[curDiv] = type;
+      divisionToDottedNoteType[curDiv * 3 / 2] = type;
+      divisionToDoubleDottedNoteType[curDiv * 3 / 2 + curDiv * 3 / 2 / 2] = type;
+      divisionToTripleDottedNoteType[curDiv * 3 / 2 + curDiv * 3 / 2 / 2 + curDiv * 3 / 2 / 2 / 2] = type;
       curDiv /= 2;
     }
     
@@ -584,6 +596,106 @@ String serializeMusicXML(MusicXML musicXML) {
     addDiv("128th");
   }
   regenerateDivisionMapping();
+
+  NoteResolution resolveNote(double beats) {
+    var resolution = NoteResolution();
+    if(divisionToNoteType.containsKey(beats)) {
+      resolution.beats = beats;
+      resolution.dots = 0;
+      resolution.noteType = divisionToNoteType[beats];
+    }
+    else {
+      if(divisionToDottedNoteType.containsKey(beats)) {
+        resolution.beats = beats;
+        resolution.dots = 1;
+        resolution.noteType = divisionToDottedNoteType[beats];
+      }
+      else if(divisionToDoubleDottedNoteType.containsKey(beats)) {
+        resolution.beats = beats;
+        resolution.dots = 2;
+        resolution.noteType = divisionToDoubleDottedNoteType[beats];
+      }
+      else if(divisionToTripleDottedNoteType.containsKey(beats)) {
+        resolution.beats = beats;
+        resolution.dots = 3;
+        resolution.noteType = divisionToTripleDottedNoteType[beats];
+      }
+    }
+    
+    if(resolution.dots != null) {
+      return resolution;
+    }
+
+    return null;
+  }
+
+  NoteResolution resolveNoteFallback(double beats) {
+    var beatList = divisionToNoteType.keys.toList();
+    beatList.sort((a,b) => b.compareTo(a));
+    
+    var beatListDotted = divisionToDottedNoteType.keys.toList();
+    beatListDotted.sort((a,b) => b.compareTo(a));
+    
+    var beatListDoubleDotted = divisionToDoubleDottedNoteType.keys.toList();
+    beatListDoubleDotted.sort((a,b) => b.compareTo(a));
+    
+    var beatListTripleDotted = divisionToTripleDottedNoteType.keys.toList();
+    beatListTripleDotted.sort((a,b) => b.compareTo(a));
+
+    for(int i=0;i < beatList.length;i++) {
+      final noteTime = beatList[i];
+      final noteTimeDotted = beatListDotted[i];
+      final noteTimeDoubleDotted = beatListDoubleDotted[i];
+      final noteTimeTripleDotted = beatListTripleDotted[i];
+      if(beats >= noteTimeTripleDotted) {
+        NoteResolution resolution = NoteResolution();
+        resolution.beats = noteTimeTripleDotted;
+        resolution.dots = 3;
+        resolution.noteType = divisionToTripleDottedNoteType[noteTimeTripleDotted];
+        return resolution;
+      }
+      else if(beats >= noteTimeDoubleDotted) {
+        NoteResolution resolution = NoteResolution();
+        resolution.beats = noteTimeDoubleDotted;
+        resolution.dots = 2;
+        resolution.noteType = divisionToDoubleDottedNoteType[noteTimeDoubleDotted];
+        return resolution;
+      }
+      else if(beats >= noteTimeDotted) {
+        NoteResolution resolution = NoteResolution();
+        resolution.beats = noteTimeDotted;
+        resolution.dots = 1;
+        resolution.noteType = divisionToDottedNoteType[noteTimeDotted];
+        return resolution;
+      }
+      else if(beats >= noteTime) {
+        NoteResolution resolution = NoteResolution();
+        resolution.beats = noteTime;
+        resolution.dots = 0;
+        resolution.noteType = divisionToNoteType[noteTime];
+        return resolution;
+      }
+    }
+
+    return null;
+  }
+
+  NoteResolution resolveNoteFallbackDiscrete(int beats) {
+    var lhs = (beats / 2).floor();
+    var rhs = beats - lhs;
+
+    var lhsRes = resolveNote(lhs.toDouble());
+    var rhsRes = resolveNote(rhs.toDouble());
+
+    if(lhsRes != null) {
+      if(rhsRes != null) {
+        return lhsRes;
+      }
+    }
+
+    // return resolveNoteFallback(beats.toDouble());
+    return null;
+  }
 
   bool divSet = false;
   bool beatSet = false;
@@ -655,24 +767,15 @@ String serializeMusicXML(MusicXML musicXML) {
               }
 
               var writeDur = min(beatsRemaining * lastDivision,duration);
-              var writeDurInternal = writeDur;
-              var isDotted = false;
+              var noteResolution = resolveNote(writeDur);
 
-              if(!divisionToNoteType.containsKey(writeDur.toDouble())) {
-                if(writeDur % 2 != 0) {
-                  // make dotted note
-                  writeDurInternal = writeDurInternal - 1;
-                  isDotted = true;
-                }
-                
-                if(divisionToNoteType.containsKey(writeDur.toDouble())) {
-                  // problem solved!
-                }
-                else if((writeDur % 2 == 0) && divisionToNoteType.containsKey((writeDur / 2).toDouble())) {
-                  writeDurInternal = writeDurInternal / 2;
-                }
-                else {
-                  // give up
+              if(noteResolution == null) {
+                // ruh roh
+                var backupResolution = resolveNoteFallback(writeDur);
+
+                if(backupResolution != null) {
+                  noteResolution = backupResolution;
+                  writeDur = backupResolution.beats;
                 }
               }
 
@@ -683,15 +786,15 @@ String serializeMusicXML(MusicXML musicXML) {
               beginTag("note",{});
                 valueTagSelfClosing("rest", {}); newline();
                 valueTag("duration", writeDur.toStringAsFixed(0), {}); newline();
-                if(divisionToNoteType.containsKey(writeDurInternal.toDouble())) {
-                  valueTag("type", divisionToNoteType[writeDurInternal.toDouble()], {}); newline();
+                if(noteResolution != null) {
+                  valueTag("type", noteResolution.noteType, {}); newline();
+                  for(int dotN=0;dotN < noteResolution.dots;dotN++) {
+                    valueTagSelfClosing("dot", {}); newline();
+                  }
                 }
                 else {
                   // we gave up
                   // valueTag("type", "?", {}); newline();
-                }
-                if(isDotted) {
-                  valueTagSelfClosing("dot", {}); newline();
                 }
                 valueTag("voice", event.voice.toString(), {}); newline();
                 if(!tieMode) {
@@ -699,7 +802,7 @@ String serializeMusicXML(MusicXML musicXML) {
                     // still more left to write.
                     // begin tie.
 
-                    valueTagSelfClosing("tie", {"type": "start"});
+                    valueTagSelfClosing("tie", {"type": "start"}); newline();
                     beginTag("notations",{});
                     valueTagSelfClosing("tied", {"type": "start"});
                     endTag("notations");
@@ -708,21 +811,17 @@ String serializeMusicXML(MusicXML musicXML) {
                   }
                 }
                 else {
+                  valueTagSelfClosing("tie", {"type": "stop"}); newline();
+                  beginTag("notations",{});
+                  valueTagSelfClosing("tied", {"type": "stop"});
+                  endTag("notations");
                   if(duration > 0) {
                     // still more left to write.
                     // continue tie.
 
-                    // not sure if this is even correct lmao
-
-                    valueTagSelfClosing("tie", {});
+                    valueTagSelfClosing("tie", {"type": "start"}); newline();
                     beginTag("notations",{});
-                    valueTagSelfClosing("tied", {});
-                    endTag("notations");
-                  }
-                  else {
-                    valueTagSelfClosing("tie", {"type": "stop"});
-                    beginTag("notations",{});
-                    valueTagSelfClosing("tied", {"type": "stop"});
+                    valueTagSelfClosing("tied", {"type": "start"});
                     endTag("notations");
                   }
                 }
@@ -744,24 +843,15 @@ String serializeMusicXML(MusicXML musicXML) {
               }
 
               var writeDur = min(beatsRemaining * lastDivision,duration);
-              var writeDurInternal = writeDur;
-              var isDotted = false;
+              var noteResolution = resolveNote(writeDur);
 
-              if(!divisionToNoteType.containsKey(writeDur.toDouble())) {
-                if(writeDur % 2 != 0) {
-                  // make dotted note
-                  writeDurInternal = writeDurInternal - 1;
-                  isDotted = true;
-                }
-                
-                if(divisionToNoteType.containsKey(writeDur.toDouble())) {
-                  // problem solved!
-                }
-                else if((writeDur % 2 == 0) && divisionToNoteType.containsKey((writeDur / 2).toDouble())) {
-                  writeDurInternal = writeDurInternal / 2;
-                }
-                else {
-                  // give up
+              if(noteResolution == null) {
+                // ruh roh
+                var backupResolution = resolveNoteFallbackDiscrete(writeDur.toInt());
+
+                if(backupResolution != null) {
+                  noteResolution = backupResolution;
+                  writeDur = backupResolution.beats;
                 }
               }
 
@@ -771,15 +861,15 @@ String serializeMusicXML(MusicXML musicXML) {
               
               beginTag("note",{});
                 valueTag("duration", writeDur.toStringAsFixed(0), {}); newline();
-                if(divisionToNoteType.containsKey(writeDurInternal.toDouble())) {
-                  valueTag("type", divisionToNoteType[writeDurInternal.toDouble()], {}); newline();
+                if(noteResolution != null) {
+                  valueTag("type", noteResolution.noteType, {}); newline();
+                  for(int dotN=0;dotN < noteResolution.dots;dotN++) {
+                    valueTagSelfClosing("dot", {}); newline();
+                  }
                 }
                 else {
                   // we gave up
                   // valueTag("type", "?", {}); newline();
-                }
-                if(isDotted) {
-                  valueTagSelfClosing("dot", {}); newline();
                 }
                 valueTag("voice", event.voice.toString(), {}); newline();
                 if((event.lyric.length > 0) && !tieMode) {
@@ -802,7 +892,7 @@ String serializeMusicXML(MusicXML musicXML) {
                     // still more left to write.
                     // begin tie.
 
-                    valueTagSelfClosing("tie", {"type": "start"});
+                    valueTagSelfClosing("tie", {"type": "start"}); newline();
                     beginTag("notations",{});
                     valueTagSelfClosing("tied", {"type": "start"});
                     endTag("notations");
@@ -811,21 +901,17 @@ String serializeMusicXML(MusicXML musicXML) {
                   }
                 }
                 else {
+                  valueTagSelfClosing("tie", {"type": "stop"}); newline();
+                  beginTag("notations",{});
+                  valueTagSelfClosing("tied", {"type": "stop"});
+                  endTag("notations");
                   if(duration > 0) {
                     // still more left to write.
                     // continue tie.
 
-                    // not sure if this is even correct lmao
-
-                    valueTagSelfClosing("tie", {});
+                    valueTagSelfClosing("tie", {"type": "start"}); newline();
                     beginTag("notations",{});
-                    valueTagSelfClosing("tied", {});
-                    endTag("notations");
-                  }
-                  else {
-                    valueTagSelfClosing("tie", {"type": "stop"});
-                    beginTag("notations",{});
-                    valueTagSelfClosing("tied", {"type": "stop"});
+                    valueTagSelfClosing("tied", {"type": "start"});
                     endTag("notations");
                   }
                 }
