@@ -2,6 +2,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:muon/controllers/muonproject.dart';
@@ -112,8 +113,28 @@ class _MuonEditorState extends State<MuonEditor> {
               currentProject,
               currentProject.selectedNotes,
               (pianoRoll,mousePos) {
+                final noteAtCursor = pianoRoll.painter.getNoteAtScreenPos(mousePos);
+                
+                if(noteAtCursor != null) {
+                  var mouseBeats = pianoRoll.painter.getAbsoluteTimeAtCursor(mousePos.x);
+                  var endBeat = (noteAtCursor.startAtTime.value + noteAtCursor.duration.value) / currentProject.timeUnitsPerBeat.value;
+
+                  var cursorBeatEndDistance = (endBeat - mouseBeats) * pianoRoll.state.xScale * pianoRoll.painter.pixelsPerBeat;
+
+                  if(cursorBeatEndDistance < 10) {
+                    pianoRoll.state.setCursor(SystemMouseCursors.resizeLeftRight);
+                  }
+                  else {
+                    pianoRoll.state.setCursor(SystemMouseCursors.click);
+                  }
+                }
+                else {
+                  pianoRoll.state.setCursor(MouseCursor.defer);
+                }
+              },
+              (pianoRoll,mousePos) {
                 // onClick
-                final noteAtCursor = pianoRoll.getNoteAtScreenPos(mousePos);
+                final noteAtCursor = pianoRoll.painter.getNoteAtScreenPos(mousePos);
 
                 if(!RawKeyboard.instance.physicalKeysPressed.contains(PhysicalKeyboardKey.shiftLeft)) {
                   currentProject.selectedNotes.forEach((note,isActive) {currentProject.selectedNotes[note] = false;});
@@ -128,23 +149,43 @@ class _MuonEditorState extends State<MuonEditor> {
               },
               (pianoRoll,mousePos,mouseFirstPos,note,originalNoteData) {
                 // onDragNote
+
+                if(!RawKeyboard.instance.physicalKeysPressed.contains(PhysicalKeyboardKey.shiftLeft)) {
+                  if(currentProject.selectedNotes[note] != true) {
+                    currentProject.selectedNotes.forEach((note,isActive) {currentProject.selectedNotes[note] = false;});
+                  }
+                }
+
                 currentProject.selectedNotes[note] = true;
+                
+                var originalFirstNote = originalNoteData[note];
+                var mouseBeats = pianoRoll.painter.getAbsoluteTimeAtCursor(mouseFirstPos.x);
+                var endBeat = (originalFirstNote.startAtTime + originalFirstNote.duration) / currentProject.timeUnitsPerBeat.value;
 
-                final fpDeltaSemiTones = pianoRoll.screenPixelsToSemitones(mouseFirstPos.y) % 1;
-                final deltaSemiTones = (pianoRoll.screenPixelsToSemitones(mousePos.y - mouseFirstPos.y) + fpDeltaSemiTones).floor();
+                var cursorBeatEndDistance = (endBeat - mouseBeats) * pianoRoll.state.xScale * pianoRoll.painter.pixelsPerBeat;
 
-                final fpDeltaBeats = (pianoRoll.getAbsoluteTimeAtCursor(mouseFirstPos.x) % 1);
-                final deltaBeats = pianoRoll.screenPixelsToBeats(mousePos.x - mouseFirstPos.x) + fpDeltaBeats / currentProject.currentSubdivision.value;
+                bool resizeMode = cursorBeatEndDistance < 10;
+
+                final fpDeltaSemiTones = pianoRoll.painter.screenPixelsToSemitones(mouseFirstPos.y) % 1;
+                final deltaSemiTones = (pianoRoll.painter.screenPixelsToSemitones(mousePos.y - mouseFirstPos.y) + fpDeltaSemiTones).floor();
+
+                final fpDeltaBeats = (pianoRoll.painter.getAbsoluteTimeAtCursor(mouseFirstPos.x) % 1);
+                final deltaBeats = pianoRoll.painter.screenPixelsToBeats(mousePos.x - mouseFirstPos.x) + fpDeltaBeats / currentProject.currentSubdivision.value;
                 final deltaSegments = deltaBeats * currentProject.currentSubdivision.value;
                 final deltaSegmentsFixed = deltaSegments.floor();
 
                 for(final selectedNote in currentProject.selectedNotes.keys) {
                   if(currentProject.selectedNotes[selectedNote]) {
                     if(originalNoteData[selectedNote] != null) {
-                      selectedNote.startAtTime.value = max(0,originalNoteData[selectedNote].startAtTime + deltaSegmentsFixed);
-                      selectedNote.note.value = originalNoteData[selectedNote].note;
-                      selectedNote.octave.value = originalNoteData[selectedNote].octave;
-                      selectedNote.addSemitones(deltaSemiTones.floor());
+                      if(resizeMode) {
+                        selectedNote.duration.value = max(1,originalNoteData[selectedNote].duration + deltaSegmentsFixed);
+                      }
+                      else {
+                        selectedNote.startAtTime.value = max(0,originalNoteData[selectedNote].startAtTime + deltaSegmentsFixed);
+                        selectedNote.note.value = originalNoteData[selectedNote].note;
+                        selectedNote.octave.value = originalNoteData[selectedNote].octave;
+                        selectedNote.addSemitones(deltaSemiTones.floor());
+                      }
                     }
                   }
                 }
@@ -155,7 +196,7 @@ class _MuonEditorState extends State<MuonEditor> {
                   currentProject.selectedNotes.forEach((note,isActive) => currentProject.selectedNotes[note] = false);
                 }
 
-                var notes = pianoRoll.getNotesTouchingRect(mouseRect);
+                var notes = pianoRoll.painter.getNotesTouchingRect(mouseRect);
 
                 for(final note in notes) {
                   currentProject.selectedNotes[note] = true;
