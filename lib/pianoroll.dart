@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -19,7 +21,7 @@ class PianoRollControls {
 }
 
 typedef _onMouseHoverCallbackType = void Function(PianoRollControls pianoRoll,Point mousePos);
-typedef _onClickCallbackType = void Function(PianoRollControls pianoRoll,Point mousePos);
+typedef _onClickCallbackType = void Function(PianoRollControls pianoRoll,Point mousePos,int numClicks);
 typedef _onDragCallbackType = void Function(PianoRollControls pianoRoll,Point mouseCurrentPos,Point mouseStartPos,MuonNoteController note,Map<MuonNoteController,MuonNote> originalNoteData);
 typedef _onSelectCallbackType = void Function(PianoRollControls pianoRoll,Rect selectionBox);
 
@@ -59,6 +61,8 @@ class _PianoRollState extends State<PianoRoll> {
   bool _dragging = false;
   MuonNoteController _internalDragFirstNote;
   bool _selecting = false;
+  Timer _lastClickTimeDecay;
+  int _lastClickCount = 0;
   Point _firstMouseDownPos;
   Rect selectionRect;
   Map<MuonNoteController,MuonNote> noteDragOriginalData;
@@ -183,6 +187,10 @@ class _PianoRollState extends State<PianoRoll> {
                 final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
                 _firstMouseDownPos = screenPos;
                 _internalMouseDown = true;
+                _lastClickCount++;
+                if((_lastClickTimeDecay == null) || (_lastClickCount >= 2)) {
+                  _lastClickCount = 0;
+                }
               }
             },
             onPointerUp: (details) {
@@ -204,7 +212,15 @@ class _PianoRollState extends State<PianoRoll> {
               else {
                 // click!
                 setState(() {
-                  _onClickCallback(controls,Point(details.localPosition.dx,details.localPosition.dy));
+                  _onClickCallback(controls,Point(details.localPosition.dx,details.localPosition.dy),_lastClickCount + 1);
+                });
+
+                if(_lastClickTimeDecay != null) {
+                  _lastClickTimeDecay.cancel();
+                }
+
+                _lastClickTimeDecay = new Timer(Duration(milliseconds: 300),() {
+                  _lastClickTimeDecay = null;
                 });
               }
 
@@ -216,6 +232,8 @@ class _PianoRollState extends State<PianoRoll> {
               _internalDragFirstNote = null;
             },
             onPointerMove: (details) {
+              _lastClickCount = 0;
+
               if(_internalMouseDown) {
                 _internalMouseDown = false;
 
@@ -268,6 +286,8 @@ class _PianoRollState extends State<PianoRoll> {
               }
             },
             onPointerHover: (details) {
+              _lastClickCount = 0;
+
               final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
               _onMouseHoverCallback(controls,screenPos);
 

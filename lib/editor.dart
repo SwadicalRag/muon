@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:muon/controllers/muonnote.dart';
 import 'package:muon/controllers/muonproject.dart';
 import 'package:muon/main.dart';
 import 'package:muon/pianoroll.dart';
@@ -132,7 +133,7 @@ class _MuonEditorState extends State<MuonEditor> {
                   pianoRoll.state.setCursor(MouseCursor.defer);
                 }
               },
-              (pianoRoll,mousePos) {
+              (pianoRoll,mousePos,numClicks) {
                 // onClick
                 final noteAtCursor = pianoRoll.painter.getNoteAtScreenPos(mousePos);
 
@@ -145,6 +146,15 @@ class _MuonEditorState extends State<MuonEditor> {
                     currentProject.selectedNotes[noteAtCursor] = false;
                   }
                   currentProject.selectedNotes[noteAtCursor] = !currentProject.selectedNotes[noteAtCursor];
+                }
+                else if(numClicks == 2) {
+                  var note = MuonNoteController();
+                  var pitch = pianoRoll.painter.getPitchAtCursor(mousePos.y);
+                  note.octave.value = pitch.octave;
+                  note.note.value = pitch.note;
+                  note.startAtTime.value = (pianoRoll.painter.getAbsoluteTimeAtCursor(mousePos.x) * currentProject.timeUnitsPerBeat.value).floor();
+                  note.duration.value = 1;
+                  currentProject.voices[0].notes.add(note);
                 }
               },
               (pianoRoll,mousePos,mouseFirstPos,note,originalNoteData) {
