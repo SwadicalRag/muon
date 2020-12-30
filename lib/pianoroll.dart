@@ -27,7 +27,7 @@ class _PianoRollState extends State<PianoRoll> {
   Rect selectionRect;
 
   void clampXY(double renderBoxHeight) {
-    xOffset = min(0, xOffset);
+    xOffset = min(-2, xOffset);
 
     double totHeight = renderBoxHeight / yScale;
     yOffset = min(0, yOffset);
