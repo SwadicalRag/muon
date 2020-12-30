@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:math';
 
 import 'package:muon/logic/musicxml.dart';
@@ -25,6 +28,24 @@ class _PianoRollState extends State<PianoRoll> {
   Map<MusicXMLEventNote,bool> selectedNotes = {};
   Point _firstSelectionPos;
   Rect selectionRect;
+
+  @override
+  void initState() {
+    RawKeyboard.instance.addListener(_keyListener);
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    RawKeyboard.instance.removeListener(_keyListener);
+    super.dispose();
+  }
+
+  _keyListener(RawKeyEvent event) {
+    isShiftKeyHeld = event.isShiftPressed;
+    isAltKeyHeld = event.isAltPressed;
+    isCtrlKeyHeld = event.isControlPressed;
+  }
 
   void clampXY(double renderBoxHeight) {
     xOffset = min(-2, xOffset);
@@ -64,126 +85,118 @@ class _PianoRollState extends State<PianoRoll> {
         var rectPainter = PianoRollPainter(
             pianoKeysWidth, xOffset, yOffset, xScale, yScale, musicXML, selectedNotes, selectionRect);
 
-        return RawKeyboardListener(
-            focusNode: focusNode,
-            autofocus: true,
-            onKey: (details) {
-              isShiftKeyHeld = details.isShiftPressed;
-              isAltKeyHeld = details.isAltPressed;
-              isCtrlKeyHeld = details.isControlPressed;
-            },
-            child: Listener(
-              onPointerSignal: (details) {
-                if (details is PointerScrollEvent) {
-                  if (!focusNode.hasFocus) {
-                    focusNode.requestFocus();
+        return Listener(
+          onPointerSignal: (details) {
+            if (details is PointerScrollEvent) {
+              if (!focusNode.hasFocus) {
+                focusNode.requestFocus();
+              }
+              setState(() {
+                if (isShiftKeyHeld && focusNode.hasPrimaryFocus) {
+                  xOffset = xOffset - details.scrollDelta.dy / xScale;
+
+                  this.clampXY(rectPainter.lastHeight);
+                } else {
+                  if (isAltKeyHeld) {
+                    double targetScaleX = max(
+                        0.25, min(4, xScale - details.scrollDelta.dy / 80));
+                    double xPointer = details.localPosition.dx - pianoKeysWidth;
+                    double xTarget = (xPointer / xScale - xOffset);
+
+                    xScale = targetScaleX;
+                    xOffset = -xTarget + xPointer / xScale;
                   }
-                  setState(() {
-                    if (isShiftKeyHeld && focusNode.hasPrimaryFocus) {
-                      xOffset = xOffset - details.scrollDelta.dy / xScale;
 
-                      this.clampXY(rectPainter.lastHeight);
-                    } else {
-                      if (isAltKeyHeld) {
-                        double targetScaleX = max(
-                            0.25, min(4, xScale - details.scrollDelta.dy / 80));
-                        double xPointer = details.localPosition.dx - pianoKeysWidth;
-                        double xTarget = (xPointer / xScale - xOffset);
+                  if (isCtrlKeyHeld) {
+                    double targetScaleY = max(
+                        0.25, min(4, yScale - details.scrollDelta.dy / 80));
+                    if (((rectPainter.lastHeight / targetScaleY) <= 1920) ||
+                        (details.scrollDelta.dy < 0)) {
+                      // only attempt scale if it wont look stupid
+                      double yPointer = details.localPosition.dy;
+                      double yTarget = (yPointer / yScale - yOffset);
 
-                        xScale = targetScaleX;
-                        xOffset = -xTarget + xPointer / xScale;
-                      }
-
-                      if (isCtrlKeyHeld) {
-                        double targetScaleY = max(
-                            0.25, min(4, yScale - details.scrollDelta.dy / 80));
-                        if (((rectPainter.lastHeight / targetScaleY) <= 1920) ||
-                            (details.scrollDelta.dy < 0)) {
-                          // only attempt scale if it wont look stupid
-                          double yPointer = details.localPosition.dy;
-                          double yTarget = (yPointer / yScale - yOffset);
-
-                          yScale = targetScaleY;
-                          yOffset = -yTarget + yPointer / yScale;
-                        }
-                      }
-
-                      if (!isAltKeyHeld && !isCtrlKeyHeld) {
-                        yOffset = yOffset - details.scrollDelta.dy;
-                      }
-
-                      this.clampXY(rectPainter.lastHeight);
+                      yScale = targetScaleY;
+                      yOffset = -yTarget + yPointer / yScale;
                     }
-                  });
-                }
-              },
-              onPointerDown: (details) {
-                if((details.buttons & kMiddleMouseButton) == kMiddleMouseButton) {
-                  _dragging = true;
-                }
-                else if((details.buttons & kPrimaryMouseButton) == kPrimaryMouseButton) {
-                  final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
-                  _selecting = true;
-                  _firstSelectionPos = screenPos;
-                  setState(() {
-                    selectionRect = Rect.fromLTRB(details.localPosition.dx, details.localPosition.dy, details.localPosition.dx, details.localPosition.dy);
-                  });
-                }
-              },
-              onPointerUp: (details) {
-                if(_selecting) {
-                  _firstSelectionPos = null;
-                  setState(() {
-                    selectionRect = null;
-                  });
-                }
+                  }
 
-                _dragging = false;
-                _selecting = false;
-              },
-              onPointerMove: (details) {
-                if (_dragging == true) {
-                  setState(() {
-                    xOffset = xOffset + details.delta.dx / xScale;
-                    yOffset = yOffset + details.delta.dy / yScale;
+                  if (!isAltKeyHeld && !isCtrlKeyHeld) {
+                    yOffset = yOffset - details.scrollDelta.dy;
+                  }
 
-                    this.clampXY(rectPainter.lastHeight);
-                  });
+                  this.clampXY(rectPainter.lastHeight);
                 }
-                else if (_selecting == true) {
-                  setState(() {
-                    var left = min(_firstSelectionPos.x, details.localPosition.dx);
-                    var right = max(_firstSelectionPos.x, details.localPosition.dx);
-                    var top = min(_firstSelectionPos.y, details.localPosition.dy);
-                    var bottom = max(_firstSelectionPos.y, details.localPosition.dy);
-                    selectionRect = Rect.fromLTRB(left,top,right,bottom);
-                  });
-                }
-              },
-              onPointerHover: (details) {
-                // final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
-                // var pitch = rectPainter.getPitchAtCursor(screenPos.y);
-                // var absTime = rectPainter.getAbsoluteTimeAtCursor(screenPos.x);
-                // print("pitch: " + pitch.note + pitch.octave.toString());
-                // print("absTime: " + absTime.toString());
+              });
+            }
+          },
+          onPointerDown: (details) {
+            if((details.buttons & kMiddleMouseButton) == kMiddleMouseButton) {
+              _dragging = true;
+            }
+            else if((details.buttons & kPrimaryMouseButton) == kPrimaryMouseButton) {
+              final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
+              _selecting = true;
+              _firstSelectionPos = screenPos;
+              setState(() {
+                selectionRect = Rect.fromLTRB(details.localPosition.dx, details.localPosition.dy, details.localPosition.dx, details.localPosition.dy);
+              });
+            }
+          },
+          onPointerUp: (details) {
+            if(_selecting) {
+              _firstSelectionPos = null;
+              setState(() {
+                selectionRect = null;
+              });
+            }
 
-                // var eventAtCursor = rectPainter.getMusicXMLEventAtScreenPos(screenPos);
-                // print("event " + eventAtCursor.toString());
+            _dragging = false;
+            _selecting = false;
+          },
+          onPointerMove: (details) {
+            if (_dragging == true) {
+              setState(() {
+                xOffset = xOffset + details.delta.dx / xScale;
+                yOffset = yOffset + details.delta.dy / yScale;
 
-                // if(eventAtCursor is MusicXMLEventNote) {
-                //   setState(() {
-                //     selectedNotes.putIfAbsent(eventAtCursor, () => true);
-                //   });
-                // }
-              },
-              child: Container(
-                color: Colors.white,
-                child: CustomPaint(
-                  painter: rectPainter,
-                  child: Container(),
-                ),
-              ),
-            ));
+                this.clampXY(rectPainter.lastHeight);
+              });
+            }
+            else if (_selecting == true) {
+              setState(() {
+                var left = min(_firstSelectionPos.x, details.localPosition.dx);
+                var right = max(_firstSelectionPos.x, details.localPosition.dx);
+                var top = min(_firstSelectionPos.y, details.localPosition.dy);
+                var bottom = max(_firstSelectionPos.y, details.localPosition.dy);
+                selectionRect = Rect.fromLTRB(left,top,right,bottom);
+              });
+            }
+          },
+          onPointerHover: (details) {
+            // final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
+            // var pitch = rectPainter.getPitchAtCursor(screenPos.y);
+            // var absTime = rectPainter.getAbsoluteTimeAtCursor(screenPos.x);
+            // print("pitch: " + pitch.note + pitch.octave.toString());
+            // print("absTime: " + absTime.toString());
+
+            // var eventAtCursor = rectPainter.getMusicXMLEventAtScreenPos(screenPos);
+            // print("event " + eventAtCursor.toString());
+
+            // if(eventAtCursor is MusicXMLEventNote) {
+            //   setState(() {
+            //     selectedNotes.putIfAbsent(eventAtCursor, () => true);
+            //   });
+            // }
+          },
+          child: Container(
+            color: Colors.white,
+            child: CustomPaint(
+              painter: rectPainter,
+              child: Container(),
+            ),
+          ),
+        );
       }))
     ]);
   }
