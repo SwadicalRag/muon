@@ -71,6 +71,7 @@ class _PianoRollState extends State<PianoRoll> {
 
   @override
   Widget build(BuildContext context) {
+    final themeData = Theme.of(context);
     return Row(mainAxisSize: MainAxisSize.max, children: [
       Expanded(child: LayoutBuilder(builder: (context, constraits) {
         if ((xOffset == -1) && (yOffset == -1)) {
@@ -81,7 +82,7 @@ class _PianoRollState extends State<PianoRoll> {
 
         this.clampXY(constraits.maxHeight);
 
-        var rectPainter = PianoRollPainter(
+        var rectPainter = PianoRollPainter(themeData,
             pianoKeysWidth, xOffset, yOffset, xScale, yScale, musicXML, selectedNotes, selectionRect);
 
         return Listener(
@@ -186,7 +187,7 @@ class _PianoRollState extends State<PianoRoll> {
             // }
           },
           child: Container(
-            color: Colors.white,
+            color: themeData.scaffoldBackgroundColor,
             child: CustomPaint(
               painter: rectPainter,
               child: Container(),
@@ -199,8 +200,9 @@ class _PianoRollState extends State<PianoRoll> {
 }
 
 class PianoRollPainter extends CustomPainter {
-  PianoRollPainter(this.pianoKeysWidth, this.xOffset, this.yOffset, this.xScale,
+  PianoRollPainter(this.themeData, this.pianoKeysWidth, this.xOffset, this.yOffset, this.xScale,
       this.yScale, this.musicXML, this.selectedNotes, this.selectionRect);
+  final ThemeData themeData;
   final double pianoKeysWidth;
   final double xOffset;
   final double yOffset;
@@ -329,7 +331,7 @@ class PianoRollPainter extends CustomPainter {
     return null;
   }
 
-  final noteColors = [
+  static final noteColors = [
     Colors.blue,
     Colors.purple,
     Colors.amber,
@@ -356,8 +358,8 @@ class PianoRollPainter extends CustomPainter {
     canvas.translate(xOffset + pianoKeysWidth / xScale, yOffset);
 
     // draw pitch grid
-    Paint pitchGridDiv = Paint()..color = Colors.grey[200];
-    Paint pitchGridOctaveDiv = Paint()..color = Colors.grey[400];
+    Paint pitchGridDiv = Paint()..color = themeData.brightness == Brightness.light ? Colors.grey[200] : Colors.grey[600];
+    Paint pitchGridOctaveDiv = Paint()..color = themeData.brightness == Brightness.light ? Colors.grey[400] : Colors.white;
     double firstVisibleKey = (yPos / 20).floorToDouble();
     int visibleKeys = ((size.height / yScale) / 20).floor();
     for (int i = 0; i < visibleKeys; i++) {
@@ -375,8 +377,8 @@ class PianoRollPainter extends CustomPainter {
     }
 
     // draw time grid
-    Paint beatDiv = Paint()..color = Colors.grey;
-    Paint measureDiv = Paint()..color = Colors.black;
+    Paint beatDiv = Paint()..color = themeData.brightness == Brightness.light ? Colors.grey : Colors.grey[600];
+    Paint measureDiv = Paint()..color = themeData.brightness == Brightness.light ? Colors.black : Colors.white;
     if (musicXML.lastTimeSignature != null) {
       if (musicXML.lastDivision != null) {
         int divisions = musicXML.lastDivision.divisions;
@@ -406,30 +408,70 @@ class PianoRollPainter extends CustomPainter {
       if (event is MusicXMLEventNote) {
         // print("Abs" + (event.absoluteTime).toString());
         var noteColor = noteColors[event.voice % noteColors.length];
-        if(selectedNotes.containsKey(event)) {
+        if(selectedNotes.containsKey(event) || true) {
+          final xBorderThickness = 5;
+          final yBorderThickness = 5;
+          if(themeData.brightness == Brightness.dark) {
+            canvas.drawRect(
+                Rect.fromLTWH(
+                    event.absoluteTime * pixelsPerBeat,
+                    pitchToYAxis(event.pitch),
+                    event.absoluteDuration * pixelsPerBeat,
+                    20),
+                Paint()..color = Colors.white);
+            canvas.drawRect(
+                Rect.fromLTWH(
+                    event.absoluteTime * pixelsPerBeat,
+                    pitchToYAxis(event.pitch),
+                    event.absoluteDuration * pixelsPerBeat,
+                    20),
+                Paint()..color = noteColor.withOpacity(0.75));
+          }
+          else {
+            canvas.drawRect(
+                Rect.fromLTWH(
+                    event.absoluteTime * pixelsPerBeat,
+                    pitchToYAxis(event.pitch),
+                    event.absoluteDuration * pixelsPerBeat,
+                    20),
+                Paint()..color = noteColor.withOpacity(0.5));
+          }
           canvas.drawRect(
               Rect.fromLTWH(
-                  event.absoluteTime * pixelsPerBeat,
-                  pitchToYAxis(event.pitch),
-                  event.absoluteDuration * pixelsPerBeat,
-                  20),
-              Paint()..color = noteColor[200]);
-          canvas.drawRect(
-              Rect.fromLTWH(
-                  event.absoluteTime * pixelsPerBeat + 3,
-                  pitchToYAxis(event.pitch) + 3,
-                  event.absoluteDuration * pixelsPerBeat - 6,
-                  20 - 6.0),
+                  event.absoluteTime * pixelsPerBeat + xBorderThickness / xScale,
+                  pitchToYAxis(event.pitch) + yBorderThickness / yScale,
+                  event.absoluteDuration * pixelsPerBeat - xBorderThickness / xScale * 2,
+                  20 - yBorderThickness / yScale * 2),
               Paint()..color = noteColor);
         }
         else {
-          canvas.drawRect(
-              Rect.fromLTWH(
-                  event.absoluteTime * pixelsPerBeat,
-                  pitchToYAxis(event.pitch),
-                  event.absoluteDuration * pixelsPerBeat,
-                  20),
-              Paint()..color = noteColor);
+          if(themeData.brightness == Brightness.light) {
+            canvas.drawRect(
+                Rect.fromLTWH(
+                    event.absoluteTime * pixelsPerBeat,
+                    pitchToYAxis(event.pitch),
+                    event.absoluteDuration * pixelsPerBeat,
+                    20),
+                Paint()..color = noteColor);
+          }
+          else {
+            final xBorderThickness = 0;
+            final yBorderThickness = 0;
+            canvas.drawRect(
+                Rect.fromLTWH(
+                    event.absoluteTime * pixelsPerBeat,
+                    pitchToYAxis(event.pitch),
+                    event.absoluteDuration * pixelsPerBeat + xBorderThickness / xScale,
+                    20),
+                Paint()..color = Colors.black);
+            canvas.drawRect(
+                Rect.fromLTWH(
+                    event.absoluteTime * pixelsPerBeat + xBorderThickness / xScale,
+                    pitchToYAxis(event.pitch) + yBorderThickness  / yScale,
+                    event.absoluteDuration * pixelsPerBeat - xBorderThickness  / xScale,
+                    20 - (yBorderThickness / yScale * 2)),
+                Paint()..color = noteColor.withOpacity(0.95));
+          }
         }
       }
     }
@@ -442,7 +484,7 @@ class PianoRollPainter extends CustomPainter {
       if (event is MusicXMLEventNote) {
         if (event.lyric != "") {
           TextSpan lyricSpan = new TextSpan(
-              style: new TextStyle(color: Colors.grey[600]), text: event.lyric);
+              style: new TextStyle(color: themeData.brightness == Brightness.light ? Colors.grey[600] : Colors.grey[300]), text: event.lyric);
           TextPainter tp = new TextPainter(
               text: lyricSpan,
               textAlign: TextAlign.left,
@@ -546,7 +588,7 @@ class PianoRollPainter extends CustomPainter {
     shadowPath.addRect(Rect.fromLTWH(0, 0, pianoKeysWidth, 1920));
     canvas.drawShadow(shadowPath, Colors.black, 10, false);
 
-    Paint whiteKeys = Paint()..color = Colors.white;
+    Paint whiteKeys = Paint()..color = themeData.brightness == Brightness.light ? Colors.white : Colors.grey[100];
     Paint blackKeys = Paint()..color = Colors.black;
     List<String> toDraw = [
       "B",
