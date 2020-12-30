@@ -1,4 +1,6 @@
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -132,12 +134,14 @@ class _MuonEditorState extends State<MuonEditor> {
                 final deltaSemiTones = (pianoRoll.screenPixelsToSemitones(mousePos.y - mouseFirstPos.y) + fpDeltaSemiTones).floor();
 
                 final fpDeltaBeats = (pianoRoll.getAbsoluteTimeAtCursor(mouseFirstPos.x) % 1);
-                final deltaBeats = (pianoRoll.screenPixelsToBeats(mousePos.x - mouseFirstPos.x) + fpDeltaBeats).floor();
+                final deltaBeats = pianoRoll.screenPixelsToBeats(mousePos.x - mouseFirstPos.x) + fpDeltaBeats / currentProject.currentSubdivision.value;
+                final deltaSegments = deltaBeats * currentProject.currentSubdivision.value;
+                final deltaSegmentsFixed = deltaSegments.floor();
 
                 for(final selectedNote in currentProject.selectedNotes.keys) {
                   if(currentProject.selectedNotes[selectedNote]) {
                     if(originalNoteData[selectedNote] != null) {
-                      selectedNote.startAtTime.value = originalNoteData[selectedNote].startAtTime + deltaBeats.floor();
+                      selectedNote.startAtTime.value = max(0,originalNoteData[selectedNote].startAtTime + deltaSegmentsFixed);
                       selectedNote.note.value = originalNoteData[selectedNote].note;
                       selectedNote.octave.value = originalNoteData[selectedNote].octave;
                       selectedNote.addSemitones(deltaSemiTones.floor());
