@@ -292,7 +292,7 @@ class _PianoRollState extends State<PianoRoll> {
               _onMouseHoverCallback(controls,screenPos);
 
               // var pitch = rectPainter.getPitchAtCursor(screenPos.y);
-              // var absTime = rectPainter.getAbsoluteTimeAtCursor(screenPos.x);
+              // var absTime = rectPainter.getBeatNumAtCursor(screenPos.x);
               // print("pitch: " + pitch.note + pitch.octave.toString());
               // print("absTime: " + absTime.toString());
 
@@ -425,7 +425,7 @@ class PianoRollPainter extends CustomPainter {
     }
   }
 
-  double getAbsoluteTimeAtCursor(double screenPosX) {
+  double getBeatNumAtCursor(double screenPosX) {
     var canvasX = screenPosX / xScale - xOffset;
     var internalCanvasX = (canvasX * xScale - pianoKeysWidth) / xScale;
 
