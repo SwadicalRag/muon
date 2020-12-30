@@ -3,16 +3,33 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
+import 'package:muon/controllers/muonnote.dart';
 import 'dart:math';
 
-import 'package:muon/logic/musicxml.dart';
+import 'package:muon/controllers/muonproject.dart';
+import 'package:muon/serializable/muon.dart';
+
+class PianoRollPitch {
+  String note;
+  int octave;
+}
 
 class PianoRoll extends StatefulWidget {
+  PianoRoll(this.project,this.selectedNotes);
+
+  final MuonProjectController project;
+  final Map<MuonNoteController,bool> selectedNotes;
+
   @override
-  _PianoRollState createState() => _PianoRollState();
+  _PianoRollState createState() => _PianoRollState(project,selectedNotes);
 }
 
 class _PianoRollState extends State<PianoRoll> {
+  _PianoRollState(this.project,this.selectedNotes);
+  final MuonProjectController project;
+  final Map<MuonNoteController,bool> selectedNotes;
+  
   double pianoKeysWidth = 150.0;
   double xOffset = -1.0;
   double yOffset = -1.0;
@@ -23,8 +40,6 @@ class _PianoRollState extends State<PianoRoll> {
   bool isShiftKeyHeld = false;
   bool _dragging = false;
   bool _selecting = false;
-  MusicXML musicXML = getDefaultFile();
-  Map<MusicXMLEventNote,bool> selectedNotes = {};
   Point _firstSelectionPos;
   Rect selectionRect;
 
@@ -82,8 +97,8 @@ class _PianoRollState extends State<PianoRoll> {
 
         this.clampXY(constraits.maxHeight);
 
-        var rectPainter = PianoRollPainter(themeData,
-            pianoKeysWidth, xOffset, yOffset, xScale, yScale, musicXML, selectedNotes, selectionRect);
+        var rectPainter = PianoRollPainter(project, selectedNotes, themeData,
+            pianoKeysWidth, xOffset, yOffset, xScale, yScale, selectionRect);
 
         return Listener(
           onPointerSignal: (details) {
@@ -92,7 +107,7 @@ class _PianoRollState extends State<PianoRoll> {
                 if (isShiftKeyHeld) {
                   xOffset = xOffset - details.scrollDelta.dy / xScale;
 
-                  this.clampXY(rectPainter.lastHeight);
+                  this.clampXY(constraits.maxHeight);
                 } else {
                   if (isAltKeyHeld) {
                     double targetScaleX = max(
@@ -107,7 +122,7 @@ class _PianoRollState extends State<PianoRoll> {
                   if (isCtrlKeyHeld) {
                     double targetScaleY = max(
                         0.25, min(4, yScale - details.scrollDelta.dy / 80));
-                    if (((rectPainter.lastHeight / targetScaleY) <= 1920) ||
+                    if (((constraits.maxHeight / targetScaleY) <= 1920) ||
                         (details.scrollDelta.dy < 0)) {
                       // only attempt scale if it wont look stupid
                       double yPointer = details.localPosition.dy;
@@ -122,7 +137,7 @@ class _PianoRollState extends State<PianoRoll> {
                     yOffset = yOffset - details.scrollDelta.dy;
                   }
 
-                  this.clampXY(rectPainter.lastHeight);
+                  this.clampXY(constraits.maxHeight);
                 }
               });
             }
@@ -157,7 +172,7 @@ class _PianoRollState extends State<PianoRoll> {
                 xOffset = xOffset + details.delta.dx / xScale;
                 yOffset = yOffset + details.delta.dy / yScale;
 
-                this.clampXY(rectPainter.lastHeight);
+                this.clampXY(constraits.maxHeight);
               });
             }
             else if (_selecting == true) {
@@ -177,10 +192,10 @@ class _PianoRollState extends State<PianoRoll> {
             // print("pitch: " + pitch.note + pitch.octave.toString());
             // print("absTime: " + absTime.toString());
 
-            // var eventAtCursor = rectPainter.getMusicXMLEventAtScreenPos(screenPos);
+            // var eventAtCursor = rectPainter.getNoteAtScreenPos(screenPos);
             // print("event " + eventAtCursor.toString());
 
-            // if(eventAtCursor is MusicXMLEventNote) {
+            // if(eventAtCursor != null) {
             //   setState(() {
             //     selectedNotes.putIfAbsent(eventAtCursor, () => true);
             //   });
@@ -191,6 +206,7 @@ class _PianoRollState extends State<PianoRoll> {
             child: CustomPaint(
               painter: rectPainter,
               child: Container(),
+              willChange: true,
             ),
           ),
         );
@@ -200,20 +216,17 @@ class _PianoRollState extends State<PianoRoll> {
 }
 
 class PianoRollPainter extends CustomPainter {
-  PianoRollPainter(this.themeData, this.pianoKeysWidth, this.xOffset, this.yOffset, this.xScale,
-      this.yScale, this.musicXML, this.selectedNotes, this.selectionRect);
+  PianoRollPainter(this.project, this.selectedNotes, this.themeData, this.pianoKeysWidth, this.xOffset, this.yOffset, this.xScale,
+      this.yScale, this.selectionRect);
+  final MuonProjectController project;
+  final Map<MuonNoteController,bool> selectedNotes;
   final ThemeData themeData;
   final double pianoKeysWidth;
   final double xOffset;
   final double yOffset;
   final double xScale;
   final double yScale;
-  final MusicXML musicXML;
-  final Map<MusicXMLEventNote,bool> selectedNotes;
   final Rect selectionRect;
-
-  double lastHeight = 0;
-  double lastWidth = 0;
 
   final double pixelsPerBeat = 500;
 
@@ -245,8 +258,8 @@ class PianoRollPainter extends CustomPainter {
   };
   static Map<int, String> pitchMapReverse =
       pitchMap.map((key, value) => new MapEntry(value, key));
-  static double pitchToYAxis(MusicXMLPitch pitch) {
-    return pitchToYAxisEx(pitch.note, pitch.octave);
+  static double pitchToYAxis(MuonNoteController pitch) {
+    return pitchToYAxisEx(pitch.note.value, pitch.octave.value);
   }
 
   static double pitchToYAxisEx(String note, int octave) {
@@ -292,38 +305,38 @@ class PianoRollPainter extends CustomPainter {
     return internalCanvasX / pixelsPerBeat;
   }
 
-  MusicXMLPitch getPitchAtCursor(double screenPosY) {
+  PianoRollPitch getPitchAtCursor(double screenPosY) {
     var canvasY = screenPosY / yScale - yOffset;
 
     var pitchDiv = (canvasY / 20).floor();
     var rawOctave = (pitchDiv / 12).floor();
     var noteID = pitchDiv - rawOctave * 12;
 
-    var pitch = new MusicXMLPitch();
+    var pitch = new PianoRollPitch();
     pitch.note = pitchMapReverse[noteID];
     pitch.octave = 8 - rawOctave;
 
     return pitch;
   }
 
-  MusicXMLEvent getMusicXMLEventAtScreenPos(Point screenPos) {
+  MuonNoteController getNoteAtScreenPos(Point screenPos) {
     // O(n), LOOK AWAY!
     // I DON'T CARE
 
     final canvasPos = screenPosToCanvasPos(screenPos, false);
 
-    for (final event in musicXML.events) {
-      if (event is MusicXMLEventNote) {
-        var noteX = event.absoluteTime * pixelsPerBeat;
-        var noteY = pitchToYAxis(event.pitch);
-        var noteW = event.absoluteDuration * pixelsPerBeat;
+    for (final voice in project.voices) {
+      for (final note in voice.notes) {
+        var noteX = note.startAtTime * pixelsPerBeat;
+        var noteY = pitchToYAxis(note);
+        var noteW = note.duration * pixelsPerBeat;
         var noteH = 20;
 
         if ((noteX < canvasPos.x) &&
             ((noteX + noteW) > canvasPos.x) &&
             (noteY < canvasPos.y) &&
             ((noteY + noteH) > canvasPos.y)) {
-          return event;
+          return note;
         }
       }
     }
@@ -343,11 +356,10 @@ class PianoRollPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    lastWidth = size.width;
-    lastHeight = size.height;
-
     // Clip to viewable area
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    print("Paint");
 
     // Save current state
     canvas.save();
@@ -379,68 +391,64 @@ class PianoRollPainter extends CustomPainter {
     // draw time grid
     Paint beatDiv = Paint()..color = themeData.brightness == Brightness.light ? Colors.grey : Colors.grey[600];
     Paint measureDiv = Paint()..color = themeData.brightness == Brightness.light ? Colors.black : Colors.white;
-    if (musicXML.lastTimeSignature != null) {
-      if (musicXML.lastDivision != null) {
-        int divisions = musicXML.lastDivision.divisions;
-        int beats = musicXML.lastTimeSignature.beats;
-        int beatType = musicXML.lastTimeSignature.beatType;
+    int beats = project.beatsPerMeasure.value;
 
-        double beatDuration = pixelsPerBeat;
-        double leftMostBeat = getCurrentLeftmostBeat().floorToDouble();
-        double leftMostBeatPos = leftMostBeat * pixelsPerBeat;
-        int beatsInView = ((size.width / xScale) / beatDuration).ceil();
+    double beatDuration = pixelsPerBeat;
+    double leftMostBeat = getCurrentLeftmostBeat().floorToDouble();
+    double leftMostBeatPos = leftMostBeat * pixelsPerBeat;
+    int beatsInView = ((size.width / xScale) / beatDuration).ceil();
 
-        for (int i = 0; i <= beatsInView; i++) {
-          var curBeatIdx = leftMostBeat + i;
-          if (curBeatIdx % beats == 0) {
-            canvas.drawLine(Offset(leftMostBeatPos + i * beatDuration, 0),
-                Offset(leftMostBeatPos + i * beatDuration, 1920), measureDiv);
-          } else {
-            canvas.drawLine(Offset(leftMostBeatPos + i * beatDuration, 0),
-                Offset(leftMostBeatPos + i * beatDuration, 1920), beatDiv);
-          }
-        }
+    for (int i = 0; i <= beatsInView; i++) {
+      var curBeatIdx = leftMostBeat + i;
+      if (curBeatIdx % beats == 0) {
+        canvas.drawLine(Offset(leftMostBeatPos + i * beatDuration, 0),
+            Offset(leftMostBeatPos + i * beatDuration, 1920), measureDiv);
+      } else {
+        canvas.drawLine(Offset(leftMostBeatPos + i * beatDuration, 0),
+            Offset(leftMostBeatPos + i * beatDuration, 1920), beatDiv);
       }
     }
 
     // draw notes on top of the grid
-    for (final event in musicXML.events) {
-      if (event is MusicXMLEventNote) {
+    int voiceID = 0;
+    for (final voice in project.voices) {
+      voiceID++;
+      for (final note in voice.notes) {
         // print("Abs" + (event.absoluteTime).toString());
-        var noteColor = noteColors[event.voice % noteColors.length];
-        if(selectedNotes.containsKey(event) || true) {
+        var noteColor = noteColors[voiceID % noteColors.length];
+        if(selectedNotes.containsKey(note)) {
           final xBorderThickness = 5;
           final yBorderThickness = 5;
           if(themeData.brightness == Brightness.dark) {
             canvas.drawRect(
                 Rect.fromLTWH(
-                    event.absoluteTime * pixelsPerBeat,
-                    pitchToYAxis(event.pitch),
-                    event.absoluteDuration * pixelsPerBeat,
+                    note.startAtTime * pixelsPerBeat,
+                    pitchToYAxis(note),
+                    note.duration * pixelsPerBeat,
                     20),
                 Paint()..color = Colors.white);
             canvas.drawRect(
                 Rect.fromLTWH(
-                    event.absoluteTime * pixelsPerBeat,
-                    pitchToYAxis(event.pitch),
-                    event.absoluteDuration * pixelsPerBeat,
+                    note.startAtTime * pixelsPerBeat,
+                    pitchToYAxis(note),
+                    note.duration * pixelsPerBeat,
                     20),
                 Paint()..color = noteColor.withOpacity(0.75));
           }
           else {
             canvas.drawRect(
                 Rect.fromLTWH(
-                    event.absoluteTime * pixelsPerBeat,
-                    pitchToYAxis(event.pitch),
-                    event.absoluteDuration * pixelsPerBeat,
+                    note.startAtTime * pixelsPerBeat,
+                    pitchToYAxis(note),
+                    note.duration * pixelsPerBeat,
                     20),
                 Paint()..color = noteColor.withOpacity(0.5));
           }
           canvas.drawRect(
               Rect.fromLTWH(
-                  event.absoluteTime * pixelsPerBeat + xBorderThickness / xScale,
-                  pitchToYAxis(event.pitch) + yBorderThickness / yScale,
-                  event.absoluteDuration * pixelsPerBeat - xBorderThickness / xScale * 2,
+                  note.startAtTime * pixelsPerBeat + xBorderThickness / xScale,
+                  pitchToYAxis(note) + yBorderThickness / yScale,
+                  note.duration * pixelsPerBeat - xBorderThickness / xScale * 2,
                   20 - yBorderThickness / yScale * 2),
               Paint()..color = noteColor);
         }
@@ -448,9 +456,9 @@ class PianoRollPainter extends CustomPainter {
           if(themeData.brightness == Brightness.light) {
             canvas.drawRect(
                 Rect.fromLTWH(
-                    event.absoluteTime * pixelsPerBeat,
-                    pitchToYAxis(event.pitch),
-                    event.absoluteDuration * pixelsPerBeat,
+                    note.startAtTime * pixelsPerBeat,
+                    pitchToYAxis(note),
+                    note.duration * pixelsPerBeat,
                     20),
                 Paint()..color = noteColor);
           }
@@ -459,16 +467,16 @@ class PianoRollPainter extends CustomPainter {
             final yBorderThickness = 0;
             canvas.drawRect(
                 Rect.fromLTWH(
-                    event.absoluteTime * pixelsPerBeat,
-                    pitchToYAxis(event.pitch),
-                    event.absoluteDuration * pixelsPerBeat + xBorderThickness / xScale,
+                    note.startAtTime * pixelsPerBeat,
+                    pitchToYAxis(note),
+                    note.duration * pixelsPerBeat + xBorderThickness / xScale,
                     20),
                 Paint()..color = Colors.black);
             canvas.drawRect(
                 Rect.fromLTWH(
-                    event.absoluteTime * pixelsPerBeat + xBorderThickness / xScale,
-                    pitchToYAxis(event.pitch) + yBorderThickness  / yScale,
-                    event.absoluteDuration * pixelsPerBeat - xBorderThickness  / xScale,
+                    note.startAtTime * pixelsPerBeat + xBorderThickness / xScale,
+                    pitchToYAxis(note) + yBorderThickness  / yScale,
+                    note.duration * pixelsPerBeat - xBorderThickness  / xScale,
                     20 - (yBorderThickness / yScale * 2)),
                 Paint()..color = noteColor.withOpacity(0.95));
           }
@@ -480,11 +488,11 @@ class PianoRollPainter extends CustomPainter {
     canvas.restore();
 
     // draw *unscaled* stuff on top of midi notes
-    for (final event in musicXML.events) {
-      if (event is MusicXMLEventNote) {
-        if (event.lyric != "") {
+    for (final voice in project.voices) {
+      for (final note in voice.notes) {
+        if (note.lyric.value != "") {
           TextSpan lyricSpan = new TextSpan(
-              style: new TextStyle(color: themeData.brightness == Brightness.light ? Colors.grey[600] : Colors.grey[300]), text: event.lyric);
+              style: new TextStyle(color: themeData.brightness == Brightness.light ? Colors.grey[600] : Colors.grey[300]), text: note.lyric.value);
           TextPainter tp = new TextPainter(
               text: lyricSpan,
               textAlign: TextAlign.left,
@@ -493,74 +501,13 @@ class PianoRollPainter extends CustomPainter {
           tp.paint(
               canvas,
               new Offset(
-                  (event.absoluteTime * pixelsPerBeat +
+                  (note.startAtTime * pixelsPerBeat +
                           xOffset +
                           pianoKeysWidth / xScale +
                           20) *
                       xScale,
-                  (pitchToYAxis(event.pitch) + yOffset) * yScale - 20));
+                  (pitchToYAxis(note) + yOffset) * yScale - 20));
         }
-      } else if (event is MusicXMLEventTempo) {
-        var yPos = pitchToYAxisEx("C", 6);
-        TextSpan lyricSpan = new TextSpan(
-            style: new TextStyle(color: Colors.black, fontSize: 10 * yScale),
-            text: "BPM: " + event.tempo.toStringAsFixed(2));
-        TextPainter tp = new TextPainter(
-            text: lyricSpan,
-            textAlign: TextAlign.left,
-            textDirection: TextDirection.ltr);
-        tp.layout();
-        canvas.drawRect(
-            Rect.fromLTWH(
-                (event.absoluteTime * pixelsPerBeat +
-                        xOffset +
-                        pianoKeysWidth / xScale) *
-                    xScale + 1,
-                (yPos + yOffset) * yScale,
-                (tp.width + 20),
-                20 * yScale),
-            Paint()..color = Colors.lightBlueAccent);
-        tp.paint(
-            canvas,
-            new Offset(
-                (event.absoluteTime * pixelsPerBeat +
-                            xOffset +
-                            pianoKeysWidth / xScale) *
-                        xScale +
-                    10,
-                (yPos + yOffset) * yScale + tp.height / 4));
-      } else if (event is MusicXMLEventTimeSignature) {
-        var yPos = pitchToYAxisEx("C#", 6);
-        TextSpan lyricSpan = new TextSpan(
-            style: new TextStyle(color: Colors.black, fontSize: 10 * yScale),
-            text: "Time Signature: " +
-                event.beats.toString() +
-                "/" +
-                event.beatType.toString());
-        TextPainter tp = new TextPainter(
-            text: lyricSpan,
-            textAlign: TextAlign.left,
-            textDirection: TextDirection.ltr);
-        tp.layout();
-        canvas.drawRect(
-            Rect.fromLTWH(
-                (event.absoluteTime * pixelsPerBeat +
-                        xOffset +
-                        pianoKeysWidth / xScale) *
-                    xScale + 1,
-                (yPos + yOffset) * yScale,
-                (tp.width + 20),
-                20 * yScale),
-            Paint()..color = Colors.lightBlueAccent[100]);
-        tp.paint(
-            canvas,
-            new Offset(
-                (event.absoluteTime * pixelsPerBeat +
-                            xOffset +
-                            pianoKeysWidth / xScale) *
-                        xScale +
-                    10,
-                (yPos + yOffset) * yScale + tp.height / 4));
       }
     }
 
