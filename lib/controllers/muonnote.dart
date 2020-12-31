@@ -1,7 +1,10 @@
 import 'package:get/get.dart';
+import 'package:muon/controllers/muonvoice.dart';
 import 'package:muon/serializable/muon.dart';
 
 class MuonNoteController extends GetxController {
+  MuonVoiceController voice;
+
   final note = "C".obs;
   final octave = 4.obs;
   final lyric = "".obs;

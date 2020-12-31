@@ -20,10 +20,10 @@ class PianoRollControls {
   _PianoRollState state;
 }
 
-typedef _onMouseHoverCallbackType = void Function(PianoRollControls pianoRoll,Point mousePos);
-typedef _onClickCallbackType = void Function(PianoRollControls pianoRoll,Point mousePos,int numClicks);
-typedef _onDragCallbackType = void Function(PianoRollControls pianoRoll,Point mouseCurrentPos,Point mouseStartPos,MuonNoteController note,Map<MuonNoteController,MuonNote> originalNoteData);
-typedef _onSelectCallbackType = void Function(PianoRollControls pianoRoll,Rect selectionBox);
+typedef _onMouseHoverCallbackType = void Function(PianoRollControls pianoRoll,PointerEvent mouseEvent);
+typedef _onClickCallbackType = void Function(PianoRollControls pianoRoll,PointerEvent mouseEvent,int numClicks);
+typedef _onDragCallbackType = void Function(PianoRollControls pianoRoll,PointerEvent mouseEvent,Point mouseStartPos,MuonNoteController note,Map<MuonNoteController,MuonNote> originalNoteData);
+typedef _onSelectCallbackType = void Function(PianoRollControls pianoRoll,PointerEvent mouseEvent,Rect selectionBox);
 
 class PianoRoll extends StatefulWidget {
   PianoRoll(this.project,this.selectedNotes,this._onMouseHoverCallback,this._onClickCallback,this._onDragCallback,this._onSelectCallback);
@@ -196,7 +196,7 @@ class _PianoRollState extends State<PianoRoll> {
             onPointerUp: (details) {
               if(_selecting) {
                 setState(() {
-                  _onSelectCallback(controls,selectionRect);
+                  _onSelectCallback(controls,details,selectionRect);
                   selectionRect = null;
                 });
               }
@@ -206,13 +206,13 @@ class _PianoRollState extends State<PianoRoll> {
               else if(_dragging) {
                 // dragging a note!
                 setState(() {
-                  _onDragCallback(controls,Point(details.localPosition.dx,details.localPosition.dy),_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
+                  _onDragCallback(controls,details,_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
                 });
               }
               else {
                 // click!
                 setState(() {
-                  _onClickCallback(controls,Point(details.localPosition.dx,details.localPosition.dy),_lastClickCount + 1);
+                  _onClickCallback(controls,details,_lastClickCount + 1);
                 });
 
                 if(_lastClickTimeDecay != null) {
@@ -276,20 +276,20 @@ class _PianoRollState extends State<PianoRoll> {
                   var bottom = max(_firstMouseDownPos.y, details.localPosition.dy);
                   selectionRect = Rect.fromLTRB(left,top,right,bottom);
 
-                  _onSelectCallback(controls,selectionRect);
+                  _onSelectCallback(controls,details,selectionRect);
                 });
               }
               else if (_dragging == true) {
                 setState(() {
-                  _onDragCallback(controls,Point(details.localPosition.dx,details.localPosition.dy),_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
+                  _onDragCallback(controls,details,_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
                 });
               }
             },
             onPointerHover: (details) {
               _lastClickCount = 0;
 
-              final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
-              _onMouseHoverCallback(controls,screenPos);
+              // final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
+              _onMouseHoverCallback(controls,details);
 
               // var pitch = rectPainter.getPitchAtCursor(screenPos.y);
               // var absTime = rectPainter.getBeatNumAtCursor(screenPos.x);

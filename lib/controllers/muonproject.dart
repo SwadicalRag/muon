@@ -54,7 +54,7 @@ class MuonProjectController extends GetxController {
     out.projectDir.value = "startup";
 
     final baseVoice = MuonVoiceController();
-    baseVoice.notes.add(
+    baseVoice.addNote(
       MuonNoteController()
         ..startAtTime.value = 0
         ..duration.value = 1
@@ -62,7 +62,7 @@ class MuonProjectController extends GetxController {
         ..octave.value = 4
         ..lyric.value = "ら"
     );
-    baseVoice.notes.add(
+    baseVoice.addNote(
       MuonNoteController()
         ..startAtTime.value = 1
         ..duration.value = 1
@@ -70,7 +70,7 @@ class MuonProjectController extends GetxController {
         ..octave.value = 4
         ..lyric.value = "ら"
     );
-    baseVoice.notes.add(
+    baseVoice.addNote(
       MuonNoteController()
         ..startAtTime.value = 2
         ..duration.value = 1
@@ -78,7 +78,7 @@ class MuonProjectController extends GetxController {
         ..octave.value = 4
         ..lyric.value = "ら"
     );
-    baseVoice.notes.add(
+    baseVoice.addNote(
       MuonNoteController()
         ..startAtTime.value = 3
         ..duration.value = 1
@@ -191,7 +191,7 @@ class MuonProjectController extends GetxController {
                 note.startAtTime.value = lastNoteOnTime.toInt() * timeUnitMulFactor;
                 note.duration.value = (curTime - lastNoteOnTime) * timeUnitMulFactor;
                 note.lyric.value = "";
-                voice.notes.add(note);
+                voice.addNote(note);
 
                 lastNoteOn = null;
               }
@@ -212,7 +212,7 @@ class MuonProjectController extends GetxController {
                   note.startAtTime.value = lastNoteOnTime.toInt() * timeUnitMulFactor;
                   note.duration.value = (curTime - lastNoteOnTime) * timeUnitMulFactor;
                   note.lyric.value = "";
-                  voice.notes.add(note);
+                  voice.addNote(note);
 
                   lastNoteOn = null;
                 }
@@ -269,7 +269,7 @@ class MuonProjectController extends GetxController {
         note.startAtTime.value = event.time.toInt() * timeUnitMulFactor;
         note.duration.value = event.duration.toInt() * timeUnitMulFactor;
         note.lyric.value = event.lyric;
-        voice.notes.add(note);
+        voice.addNote(note);
       }
     }
 

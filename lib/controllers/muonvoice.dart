@@ -22,6 +22,11 @@ class MuonVoiceController extends GetxController {
     notes.sort((a,b) => a.startAtTime.value.compareTo(b.startAtTime.value));
   }
 
+  void addNote(MuonNoteController note) {
+    note.voice = this;
+    notes.add(note);
+  }
+
   MuonVoice toSerializable([MuonProject project]) {
     final out = MuonVoice();
     out.project = project ?? this.project.toSerializable();
@@ -39,7 +44,7 @@ class MuonVoiceController extends GetxController {
     out.modelName.value = obj.modelName;
     out.randomiseTiming.value = obj.randomiseTiming;
     for(final note in obj.notes) {
-      out.notes.add(MuonNoteController.fromSerializable(note));
+      out.addNote(MuonNoteController.fromSerializable(note));
     }
     return out;
   }
