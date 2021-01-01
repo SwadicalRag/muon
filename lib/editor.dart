@@ -62,8 +62,20 @@ class _MuonEditorState extends State<MuonEditor> {
                                 if(File(value + "/bin/NEUTRINO.exe").existsSync() || File(value + "/bin/NEUTRINO").existsSync()) {
                                   settings.neutrinoDir = value;
                                   settings.save();
+                                  return;
                                 }
                               }
+
+                              settings.neutrinoDir = "";
+                              settings.save();
+
+                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(backgroundColor: Theme.of(context).errorColor,
+                                  content: new Text("Error: That doesn't seem like a valid NEUTRINO directory!"),
+                                  duration: new Duration(seconds: 5),
+                                )
+                              );
                             }
                           });
                         },
@@ -85,6 +97,7 @@ class _MuonEditorState extends State<MuonEditor> {
                     child: Text("I'm all set!"),
                     onPressed: () {
                       if(settings.neutrinoDir == "") {
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(backgroundColor: Theme.of(context).errorColor,
                             content: new Text('Error: Please choose a valid directory for the NEUTRINO library!'),
