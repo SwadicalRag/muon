@@ -50,6 +50,7 @@ dependencies:
   get: ^3.24.0
   kana_kit: ^1.0.4
   path: ^1.7.0
+  flutter_audio_desktop: ^0.0.8
 
 dev_dependencies:
   flutter_test:
