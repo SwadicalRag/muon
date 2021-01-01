@@ -67,6 +67,7 @@ class _PianoRollState extends State<PianoRoll> {
   Rect selectionRect;
   Map<MuonNoteController,MuonNote> noteDragOriginalData;
   MouseCursor cursor = MouseCursor.defer;
+  Point curMousePos;
 
   @override
   void initState() {
@@ -129,7 +130,7 @@ class _PianoRollState extends State<PianoRoll> {
         this.clampXY(constraits.maxHeight);
 
         var rectPainter = PianoRollPainter(project, selectedNotes, themeData,
-            pianoKeysWidth, xOffset, yOffset, xScale, yScale, selectionRect);
+            pianoKeysWidth, xOffset, yOffset, xScale, yScale, selectionRect, curMousePos);
 
         final controls = PianoRollControls();
         controls.painter = rectPainter;
@@ -233,6 +234,7 @@ class _PianoRollState extends State<PianoRoll> {
               _internalDragFirstNote = null;
             },
             onPointerMove: (details) {
+              curMousePos = Point(details.localPosition.dx,details.localPosition.dy);
               _lastClickCount = 0;
 
               if(_internalMouseDown) {
@@ -290,6 +292,7 @@ class _PianoRollState extends State<PianoRoll> {
               }
             },
             onPointerHover: (details) {
+              curMousePos = Point(details.localPosition.dx,details.localPosition.dy);
               _lastClickCount = 0;
 
               // final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
@@ -334,7 +337,7 @@ class _PianoRollState extends State<PianoRoll> {
 
 class PianoRollPainter extends CustomPainter {
   PianoRollPainter(this.project, this.selectedNotes, this.themeData, this.pianoKeysWidth, this.xOffset, this.yOffset, this.xScale,
-      this.yScale, this.selectionRect);
+      this.yScale, this.selectionRect, this.curMousePos);
   final MuonProjectController project;
   final Map<MuonNoteController,bool> selectedNotes;
   final ThemeData themeData;
@@ -344,6 +347,7 @@ class PianoRollPainter extends CustomPainter {
   final double xScale;
   final double yScale;
   final Rect selectionRect;
+  final Point curMousePos;
 
   final double pixelsPerBeat = 500;
 
@@ -767,6 +771,26 @@ class PianoRollPainter extends CustomPainter {
         keyIdx++;
       }
     }
+
+    // draw "what am i looking at?" (waila)
+    final mouseBeatNum = max(0,getBeatNumAtCursor(curMousePos.x));
+    final mouseBeatSubDivNum = (mouseBeatNum * project.currentSubdivision.value).floor() % project.currentSubdivision.value + 1;
+    final mouseMeasureNum = (mouseBeatNum / project.beatsPerMeasure.value).ceil();
+    final mousePitch = getPitchAtCursor(curMousePos.y);
+    var wailaLabelPainter = new TextPainter(
+      text: new TextSpan(
+          style: new TextStyle(
+              color: themeData.brightness == Brightness.light ? Colors.grey[600] : Colors.grey[200], fontSize: 24),
+          text: mousePitch.note + mousePitch.octave.toString() + " | " + mouseMeasureNum.toString() + "." + mouseBeatNum.ceil().toString() + "." + mouseBeatSubDivNum.toString()),
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    var wailaRect = Rect.fromLTWH(size.width - 10 - wailaLabelPainter.width, size.height - 10 - wailaLabelPainter.height, 10 + wailaLabelPainter.width, 10 + wailaLabelPainter.height);
+    var wailaShadowPath = new Path();
+    wailaShadowPath.addRect(wailaRect);
+    canvas.drawShadow(wailaShadowPath, Colors.black, 10, false);
+    canvas.drawRect(wailaRect, Paint()..color = themeData.scaffoldBackgroundColor);
+    wailaLabelPainter.paint(canvas,new Offset(wailaRect.left + 5, wailaRect.top + 5));
   }
 
   @override
