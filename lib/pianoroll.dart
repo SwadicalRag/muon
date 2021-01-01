@@ -93,6 +93,7 @@ class _PianoRollState extends State<PianoRoll> {
   @override
   void initState() {
     RawKeyboard.instance.addListener(_keyListener);
+    project.playheadTime.listen((val) => _onProjectUpdate());
     super.initState();
   }
 
@@ -106,6 +107,10 @@ class _PianoRollState extends State<PianoRoll> {
     isShiftKeyHeld = event.isShiftPressed;
     isAltKeyHeld = event.isAltPressed;
     isCtrlKeyHeld = event.isControlPressed;
+  }
+
+  _onProjectUpdate() {
+    setState(() {});
   }
 
   void setCursor(MouseCursor cursor) {

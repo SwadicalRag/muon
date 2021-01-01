@@ -6,6 +6,7 @@ import 'package:muon/controllers/muonproject.dart';
 import 'package:muon/serializable/muon.dart';
 import 'package:muon/serializable/settings.dart';
 import 'package:muon/logic/musicxml.dart';
+import 'package:flutter_audio_desktop/flutter_audio_desktop.dart';
 
 String getRawProgramPath(String programName) {
   return getMuonSettings().neutrinoDir + "/" + programName;
@@ -140,6 +141,24 @@ class MuonVoiceController extends GetxController {
     ],workingDirectory: getRawProgramPath("")).then((ProcessResult results) {
       print(results.stdout);
     });
+  }
+
+  AudioPlayer audioPlayer;
+  Future<AudioPlayer> getAudioPlayer() async {
+    final voiceID = project.voices.indexOf(this);
+    if(audioPlayer == null) {
+      audioPlayer = new AudioPlayer(id: voiceID);
+    }
+
+    final suc = await audioPlayer.load(project.getProjectFilePath("audio/" + voiceID.toString() + "_voice_world.wav"));
+
+    audioPlayer.setPosition(Duration(seconds: 2));
+
+    if(!suc) {
+      audioPlayer = null;
+    }
+
+    return audioPlayer;
   }
 
   MuonVoice toSerializable([MuonProject project]) {

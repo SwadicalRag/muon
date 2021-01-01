@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:muon/controllers/muonnote.dart';
 import 'package:muon/controllers/muonproject.dart';
+import 'package:muon/controllers/muonvoice.dart';
 import 'package:muon/logic/japanese.dart';
 import 'package:muon/main.dart';
 import 'package:muon/pianoroll.dart';
@@ -30,6 +31,19 @@ class _MuonEditorState extends State<MuonEditor> {
   @override
   Widget build(BuildContext context) {
     final settings = getMuonSettings();
+    
+    Timer.periodic(Duration(milliseconds: 1),(Timer t) async {
+      MuonVoiceController voice = currentProject.voices[0];
+
+      if(voice != null) {
+        if(voice.audioPlayer != null) {
+          if(voice.audioPlayer.isPlaying) {
+            int voicePos = (await voice.audioPlayer.getPosition()).inMilliseconds - 2000;
+            currentProject.playheadTime.value = voicePos / 1000 * (currentProject.bpm / 60);
+          }
+        }
+      }
+    });
 
     if((settings.neutrinoDir == "") && !_firstTimeSetupDone) {
       // perform first time setup
@@ -125,8 +139,15 @@ class _MuonEditorState extends State<MuonEditor> {
           IconButton(
             icon: const Icon(Icons.play_arrow),
             tooltip: "Play",
-            onPressed: () {
-              
+            onPressed: () async {
+              for(final voice in currentProject.voices) {
+                final audioPlayer = await voice.getAudioPlayer();
+
+                final suc = await audioPlayer.play();
+
+                if(suc) {
+                }
+              }
             },
           ),
           IconButton(
