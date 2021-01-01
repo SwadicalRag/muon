@@ -141,21 +141,27 @@ class _MuonEditorState extends State<MuonEditor> {
             icon: const Icon(Icons.timer),
             tooltip: "Calculate phoneme labels",
             onPressed: () {
-              
+              for(final voice in currentProject.voices) {
+                voice.makeLabels();
+              }
             },
           ),
           IconButton(
             icon: const Icon(Icons.music_note),
             tooltip: "Calculate neutrino data",
             onPressed: () {
-              
+              for(final voice in currentProject.voices) {
+                voice.runNeutrino();
+              }
             },
           ),
           IconButton(
             icon: const Icon(Icons.computer),
             tooltip: "Render with NSF",
             onPressed: () {
-              
+              for(final voice in currentProject.voices) {
+                voice.vocodeNSF();
+              }
             },
           ),
           SizedBox(width: 40,),
