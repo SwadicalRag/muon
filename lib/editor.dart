@@ -294,6 +294,83 @@ class _MuonEditorState extends State<MuonEditor> {
                   currentProject.playheadTime.value = earliestTime;
                 }
               },
+              (pianoRoll,keyEvent) {
+                if(keyEvent.isControlPressed) {
+                  // control key commands
+
+                  if(keyEvent.isKeyPressed(LogicalKeyboardKey.keyA)) {
+                    // select all
+
+                    for(final voice in currentProject.voices) {
+                      for(final note in voice.notes) {
+                        currentProject.selectedNotes[note] = true;
+                      }
+                    }
+
+                    // dumb hack to force repaint
+                    pianoRoll.state.setState(() {});
+                  }
+                }
+
+                if(keyEvent.isKeyPressed(LogicalKeyboardKey.delete)) {
+                  for(final selectedNote in currentProject.selectedNotes.keys) {
+                    if(currentProject.selectedNotes[selectedNote]) {
+                      selectedNote.voice.notes.remove(selectedNote);
+                    }
+                  }
+
+                  // dumb hack to force repaint
+                  pianoRoll.state.setState(() {});
+                }
+                else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowUp)) {
+                  int moveBy = keyEvent.isShiftPressed ? 12 : 1;
+
+                  for(final selectedNote in currentProject.selectedNotes.keys) {
+                    if(currentProject.selectedNotes[selectedNote]) {
+                      selectedNote.addSemitones(moveBy);
+                    }
+                  }
+
+                  // dumb hack to force repaint
+                  pianoRoll.state.setState(() {});
+                }
+                else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowDown)) {
+                  int moveBy = keyEvent.isShiftPressed ? -12 : -1;
+
+                  for(final selectedNote in currentProject.selectedNotes.keys) {
+                    if(currentProject.selectedNotes[selectedNote]) {
+                      selectedNote.addSemitones(moveBy);
+                    }
+                  }
+
+                  // dumb hack to force repaint
+                  pianoRoll.state.setState(() {});
+                }
+                else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowRight)) {
+                  int moveBy = keyEvent.isShiftPressed ? currentProject.timeUnitsPerBeat.value : 1;
+
+                  for(final selectedNote in currentProject.selectedNotes.keys) {
+                    if(currentProject.selectedNotes[selectedNote]) {
+                      selectedNote.startAtTime.value = selectedNote.startAtTime.value + moveBy;
+                    }
+                  }
+
+                  // dumb hack to force repaint
+                  pianoRoll.state.setState(() {});
+                }
+                else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowLeft)) {
+                  int moveBy = keyEvent.isShiftPressed ? -currentProject.timeUnitsPerBeat.value : -1;
+
+                  for(final selectedNote in currentProject.selectedNotes.keys) {
+                    if(currentProject.selectedNotes[selectedNote]) {
+                      selectedNote.startAtTime.value = max(0,selectedNote.startAtTime.value + moveBy);
+                    }
+                  }
+
+                  // dumb hack to force repaint
+                  pianoRoll.state.setState(() {});
+                }
+              },
             ))
           ),
           Container(
