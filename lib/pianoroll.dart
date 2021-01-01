@@ -256,6 +256,7 @@ class _PianoRollState extends State<PianoRoll> {
                     }
 
                     _lastClickTimeDecay = new Timer(Duration(milliseconds: 300),() {
+                      _firstMouseDownPos = null;
                       _lastClickTimeDecay = null;
                     });
                   }
@@ -264,14 +265,12 @@ class _PianoRollState extends State<PianoRoll> {
                   _selecting = false;
                   _dragging = false;
                   _internalMouseDown = false;
-                  _firstMouseDownPos = null;
                   _internalDragFirstNote = null;
                 },
                 onPointerMove: (details) {
                   curMousePos = Point(details.localPosition.dx,details.localPosition.dy);
-                  _lastClickCount = 0;
 
-                  if(_internalMouseDown) {
+                  if(_internalMouseDown && ((_firstMouseDownPos == null) || (curMousePos.squaredDistanceTo(_firstMouseDownPos) > 9))) {
                     _internalMouseDown = false;
 
                     // mouse started moving for the first time after mousedown
@@ -298,6 +297,10 @@ class _PianoRollState extends State<PianoRoll> {
                     else {
                       _selecting = true;
                     }
+                  }
+
+                  if(!_internalMouseDown) {
+                    _lastClickCount = 0;
                   }
 
                   if (_panning == true) {
@@ -327,7 +330,12 @@ class _PianoRollState extends State<PianoRoll> {
                 },
                 onPointerHover: (details) {
                   curMousePos = Point(details.localPosition.dx,details.localPosition.dy);
-                  _lastClickCount = 0;
+                  if((_lastClickTimeDecay == null) || (_firstMouseDownPos == null)) {
+                    _lastClickCount = 0;
+                  }
+                  else if(curMousePos.squaredDistanceTo(_firstMouseDownPos) > 9) {
+                    _lastClickCount = 0;
+                  }
 
                   // final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
                   _onMouseHoverCallback(controls,details);
