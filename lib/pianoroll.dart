@@ -25,9 +25,10 @@ typedef _onMouseHoverCallbackType = void Function(PianoRollControls pianoRoll,Po
 typedef _onClickCallbackType = void Function(PianoRollControls pianoRoll,PointerEvent mouseEvent,int numClicks);
 typedef _onDragCallbackType = void Function(PianoRollControls pianoRoll,PointerEvent mouseEvent,Point mouseStartPos,MuonNoteController note,Map<MuonNoteController,MuonNote> originalNoteData);
 typedef _onSelectCallbackType = void Function(PianoRollControls pianoRoll,PointerEvent mouseEvent,Rect selectionBox);
+typedef _onKeyCallbackType = void Function(PianoRollControls pianoRoll,RawKeyEvent keyEvent);
 
 class PianoRoll extends StatefulWidget {
-  PianoRoll(this.project,this.selectedNotes,this._onMouseHoverCallback,this._onClickCallback,this._onDragCallback,this._onSelectCallback);
+  PianoRoll(this.project,this.selectedNotes,this._onMouseHoverCallback,this._onClickCallback,this._onDragCallback,this._onSelectCallback,this._onKeyCallback);
 
   final MuonProjectController project;
   final Map<MuonNoteController,bool> selectedNotes;
@@ -35,6 +36,7 @@ class PianoRoll extends StatefulWidget {
   final _onClickCallbackType _onClickCallback;
   final _onDragCallbackType _onDragCallback;
   final _onSelectCallbackType _onSelectCallback;
+  final _onKeyCallbackType _onKeyCallback;
 
   @override
   _PianoRollState createState() => _PianoRollState(project,selectedNotes,_onMouseHoverCallback,_onClickCallback,_onDragCallback,_onSelectCallback);
@@ -69,6 +71,24 @@ class _PianoRollState extends State<PianoRoll> {
   Map<MuonNoteController,MuonNote> noteDragOriginalData;
   MouseCursor cursor = MouseCursor.defer;
   Point curMousePos;
+
+  // Why am I doing this, you ask?
+  // Because flutter uses arrow keys for Focus traversal
+  // but i don't want that. I couldn't find an easy way to achieve this
+  // whilst preserving my onKey callback, so we're using this ugly hack
+  // Enjoy!
+  final Map<LogicalKeySet, Intent> _disabledNavigationKeys = <LogicalKeySet, Intent>{
+    LogicalKeySet(LogicalKeyboardKey.arrowUp): Intent.doNothing,
+    LogicalKeySet(LogicalKeyboardKey.arrowDown): Intent.doNothing,
+    LogicalKeySet(LogicalKeyboardKey.arrowLeft): Intent.doNothing,
+    LogicalKeySet(LogicalKeyboardKey.arrowRight): Intent.doNothing,
+  };
+
+  // why initialise the FocusNode here and not in the parent class, you ask?
+  // I have no idea why but when I initialise the FocusNode in the parent,
+  // focus logic breaks after the first hot reload. I do not have the patience
+  // to figure out why.
+  final focusNode = FocusNode();
 
   @override
   void initState() {
@@ -120,219 +140,229 @@ class _PianoRollState extends State<PianoRoll> {
   @override
   Widget build(BuildContext context) {
     final themeData = Theme.of(context);
-    return Row(mainAxisSize: MainAxisSize.max, children: [
-      Expanded(child: LayoutBuilder(builder: (context, constraits) {
-        if ((xOffset == -1) && (yOffset == -1)) {
-          // first run: scroll to C#6
-          xOffset = 0;
-          yOffset = -PianoRollPainter.pitchToYAxisEx("C#", 6);
-        }
+    return Shortcuts(
+      shortcuts: _disabledNavigationKeys,
+      child: Row(mainAxisSize: MainAxisSize.max, children: [
+        Expanded(child: LayoutBuilder(builder: (context, constraits) {
+          if ((xOffset == -1) && (yOffset == -1)) {
+            // first run: scroll to C#6
+            xOffset = 0;
+            yOffset = -PianoRollPainter.pitchToYAxisEx("C#", 6);
+          }
 
-        this.clampXY(constraits.maxHeight);
+          this.clampXY(constraits.maxHeight);
 
-        var rectPainter = PianoRollPainter(project, selectedNotes, themeData,
-            pianoKeysWidth, xOffset, yOffset, xScale, yScale, selectionRect, curMousePos);
+          var rectPainter = PianoRollPainter(project, selectedNotes, themeData,
+              pianoKeysWidth, xOffset, yOffset, xScale, yScale, selectionRect, curMousePos);
 
-        final controls = PianoRollControls();
-        controls.painter = rectPainter;
-        controls.state = this;
+          final controls = PianoRollControls();
+          controls.painter = rectPainter;
+          controls.state = this;
 
-        return MouseRegion(
-          cursor: cursor,
-          child: Listener(
-            onPointerSignal: (details) {
-              if (details is PointerScrollEvent) {
-                setState(() {
-                  if (isShiftKeyHeld && !isCtrlKeyHeld) {
-                    xOffset = xOffset - details.scrollDelta.dy / xScale;
-                    yOffset = yOffset - details.scrollDelta.dx / yScale;
+          return RawKeyboardListener(
+            focusNode: focusNode,
+            autofocus: true,
+            onKey: (RawKeyEvent event) {
+              widget._onKeyCallback(controls,event);
+            },
+            child: MouseRegion(
+              cursor: cursor,
+              child: Listener(
+                onPointerSignal: (details) {
+                  if (details is PointerScrollEvent) {
+                    setState(() {
+                      if (isShiftKeyHeld && !isCtrlKeyHeld) {
+                        xOffset = xOffset - details.scrollDelta.dy / xScale;
+                        yOffset = yOffset - details.scrollDelta.dx / yScale;
 
-                    this.clampXY(constraits.maxHeight);
-                  } else {
-                    if (isShiftKeyHeld) {
-                      double targetScaleX = max(
-                          0.25, min(4, xScale - details.scrollDelta.dy / 80));
-                      double xPointer = details.localPosition.dx - pianoKeysWidth;
-                      double xTarget = (xPointer / xScale - xOffset);
+                        this.clampXY(constraits.maxHeight);
+                      } else {
+                        if (isShiftKeyHeld) {
+                          double targetScaleX = max(
+                              0.25, min(4, xScale - details.scrollDelta.dy / 80));
+                          double xPointer = details.localPosition.dx - pianoKeysWidth;
+                          double xTarget = (xPointer / xScale - xOffset);
 
-                      xScale = targetScaleX;
-                      xOffset = -xTarget + xPointer / xScale;
+                          xScale = targetScaleX;
+                          xOffset = -xTarget + xPointer / xScale;
+                        }
+                        else if (isCtrlKeyHeld) {
+                          double targetScaleY = max(
+                              0.25, min(4, yScale - details.scrollDelta.dy / 80));
+                          if (((constraits.maxHeight / targetScaleY) <= 1920) ||
+                              (details.scrollDelta.dy < 0)) {
+                            // only attempt scale if it wont look stupid
+                            double yPointer = details.localPosition.dy;
+                            double yTarget = (yPointer / yScale - yOffset);
+
+                            yScale = targetScaleY;
+                            yOffset = -yTarget + yPointer / yScale;
+                          }
+                        }
+
+                        if (!isShiftKeyHeld && !isCtrlKeyHeld) {
+                          yOffset = yOffset - details.scrollDelta.dy / yScale;
+                          xOffset = xOffset - details.scrollDelta.dx / xScale * 2;
+                        }
+
+                        this.clampXY(constraits.maxHeight);
+                      }
+                    });
+                  }
+                },
+                onPointerDown: (details) {
+                  if((details.buttons & kMiddleMouseButton) == kMiddleMouseButton) {
+                    _panning = true;
+                  }
+                  else if((details.buttons & kPrimaryMouseButton) == kPrimaryMouseButton) {
+                    final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
+                    _firstMouseDownPos = screenPos;
+                    _internalMouseDown = true;
+                    _lastClickCount++;
+                    if((_lastClickTimeDecay == null) || (_lastClickCount >= 2)) {
+                      _lastClickCount = 0;
                     }
-                    else if (isCtrlKeyHeld) {
-                      double targetScaleY = max(
-                          0.25, min(4, yScale - details.scrollDelta.dy / 80));
-                      if (((constraits.maxHeight / targetScaleY) <= 1920) ||
-                          (details.scrollDelta.dy < 0)) {
-                        // only attempt scale if it wont look stupid
-                        double yPointer = details.localPosition.dy;
-                        double yTarget = (yPointer / yScale - yOffset);
+                  }
+                },
+                onPointerUp: (details) {
+                  if(_selecting) {
+                    setState(() {
+                      _onSelectCallback(controls,details,selectionRect);
+                      selectionRect = null;
+                    });
+                  }
+                  else if(_panning) {
+                    // do nothing
+                  }
+                  else if(_dragging) {
+                    // dragging a note!
+                    setState(() {
+                      _onDragCallback(controls,details,_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
+                    });
+                  }
+                  else {
+                    // click!
+                    setState(() {
+                      _onClickCallback(controls,details,_lastClickCount + 1);
+                    });
 
-                        yScale = targetScaleY;
-                        yOffset = -yTarget + yPointer / yScale;
+                    if(_lastClickTimeDecay != null) {
+                      _lastClickTimeDecay.cancel();
+                    }
+
+                    _lastClickTimeDecay = new Timer(Duration(milliseconds: 300),() {
+                      _lastClickTimeDecay = null;
+                    });
+                  }
+
+                  _panning = false;
+                  _selecting = false;
+                  _dragging = false;
+                  _internalMouseDown = false;
+                  _firstMouseDownPos = null;
+                  _internalDragFirstNote = null;
+                },
+                onPointerMove: (details) {
+                  curMousePos = Point(details.localPosition.dx,details.localPosition.dy);
+                  _lastClickCount = 0;
+
+                  if(_internalMouseDown) {
+                    _internalMouseDown = false;
+
+                    // mouse started moving for the first time after mousedown
+
+                    final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
+                    final noteAtCursor = rectPainter.getNoteAtScreenPos(screenPos);
+                    
+                    if(noteAtCursor != null) {
+                      _dragging = true;
+                      _internalDragFirstNote = noteAtCursor;
+
+                      noteDragOriginalData = {};
+                      noteDragOriginalData[noteAtCursor] = noteAtCursor.toSerializable();
+
+                      for(final note in selectedNotes.keys) {
+                        if(selectedNotes[note]) {
+                          noteDragOriginalData[note] = note.toSerializable();
+                        }
                       }
                     }
-
-                    if (!isShiftKeyHeld && !isCtrlKeyHeld) {
-                      yOffset = yOffset - details.scrollDelta.dy / yScale;
-                      xOffset = xOffset - details.scrollDelta.dx / xScale * 2;
+                    else if(details.kind != PointerDeviceKind.mouse) {
+                      _panning = true;
                     }
-
-                    this.clampXY(constraits.maxHeight);
+                    else {
+                      _selecting = true;
+                    }
                   }
-                });
-              }
-            },
-            onPointerDown: (details) {
-              if((details.buttons & kMiddleMouseButton) == kMiddleMouseButton) {
-                _panning = true;
-              }
-              else if((details.buttons & kPrimaryMouseButton) == kPrimaryMouseButton) {
-                final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
-                _firstMouseDownPos = screenPos;
-                _internalMouseDown = true;
-                _lastClickCount++;
-                if((_lastClickTimeDecay == null) || (_lastClickCount >= 2)) {
+
+                  if (_panning == true) {
+                    setState(() {
+                      xOffset = xOffset + details.delta.dx / xScale;
+                      yOffset = yOffset + details.delta.dy / yScale;
+
+                      this.clampXY(constraits.maxHeight);
+                    });
+                  }
+                  else if (_selecting == true) {
+                    setState(() {
+                      var left = min(_firstMouseDownPos.x, details.localPosition.dx);
+                      var right = max(_firstMouseDownPos.x, details.localPosition.dx);
+                      var top = min(_firstMouseDownPos.y, details.localPosition.dy);
+                      var bottom = max(_firstMouseDownPos.y, details.localPosition.dy);
+                      selectionRect = Rect.fromLTRB(left,top,right,bottom);
+
+                      _onSelectCallback(controls,details,selectionRect);
+                    });
+                  }
+                  else if (_dragging == true) {
+                    setState(() {
+                      _onDragCallback(controls,details,_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
+                    });
+                  }
+                },
+                onPointerHover: (details) {
+                  curMousePos = Point(details.localPosition.dx,details.localPosition.dy);
                   _lastClickCount = 0;
-                }
-              }
-            },
-            onPointerUp: (details) {
-              if(_selecting) {
-                setState(() {
-                  _onSelectCallback(controls,details,selectionRect);
-                  selectionRect = null;
-                });
-              }
-              else if(_panning) {
-                // do nothing
-              }
-              else if(_dragging) {
-                // dragging a note!
-                setState(() {
-                  _onDragCallback(controls,details,_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
-                });
-              }
-              else {
-                // click!
-                setState(() {
-                  _onClickCallback(controls,details,_lastClickCount + 1);
-                });
 
-                if(_lastClickTimeDecay != null) {
-                  _lastClickTimeDecay.cancel();
-                }
+                  // final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
+                  _onMouseHoverCallback(controls,details);
 
-                _lastClickTimeDecay = new Timer(Duration(milliseconds: 300),() {
-                  _lastClickTimeDecay = null;
-                });
-              }
+                  // var pitch = rectPainter.getPitchAtCursor(screenPos.y);
+                  // var absTime = rectPainter.getBeatNumAtCursor(screenPos.x);
+                  // print("pitch: " + pitch.note + pitch.octave.toString());
+                  // print("absTime: " + absTime.toString());
 
-              _panning = false;
-              _selecting = false;
-              _dragging = false;
-              _internalMouseDown = false;
-              _firstMouseDownPos = null;
-              _internalDragFirstNote = null;
-            },
-            onPointerMove: (details) {
-              curMousePos = Point(details.localPosition.dx,details.localPosition.dy);
-              _lastClickCount = 0;
+                  // var eventAtCursor = rectPainter.getNoteAtScreenPos(screenPos);
+                  // print("event " + eventAtCursor.toString());
 
-              if(_internalMouseDown) {
-                _internalMouseDown = false;
-
-                // mouse started moving for the first time after mousedown
-
-                final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
-                final noteAtCursor = rectPainter.getNoteAtScreenPos(screenPos);
-                
-                if(noteAtCursor != null) {
-                  _dragging = true;
-                  _internalDragFirstNote = noteAtCursor;
-
-                  noteDragOriginalData = {};
-                  noteDragOriginalData[noteAtCursor] = noteAtCursor.toSerializable();
-
-                  for(final note in selectedNotes.keys) {
-                    if(selectedNotes[note]) {
-                      noteDragOriginalData[note] = note.toSerializable();
-                    }
-                  }
-                }
-                else if(details.kind != PointerDeviceKind.mouse) {
-                  _panning = true;
-                }
-                else {
-                  _selecting = true;
-                }
-              }
-
-              if (_panning == true) {
-                setState(() {
-                  xOffset = xOffset + details.delta.dx / xScale;
-                  yOffset = yOffset + details.delta.dy / yScale;
-
-                  this.clampXY(constraits.maxHeight);
-                });
-              }
-              else if (_selecting == true) {
-                setState(() {
-                  var left = min(_firstMouseDownPos.x, details.localPosition.dx);
-                  var right = max(_firstMouseDownPos.x, details.localPosition.dx);
-                  var top = min(_firstMouseDownPos.y, details.localPosition.dy);
-                  var bottom = max(_firstMouseDownPos.y, details.localPosition.dy);
-                  selectionRect = Rect.fromLTRB(left,top,right,bottom);
-
-                  _onSelectCallback(controls,details,selectionRect);
-                });
-              }
-              else if (_dragging == true) {
-                setState(() {
-                  _onDragCallback(controls,details,_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
-                });
-              }
-            },
-            onPointerHover: (details) {
-              curMousePos = Point(details.localPosition.dx,details.localPosition.dy);
-              _lastClickCount = 0;
-
-              // final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
-              _onMouseHoverCallback(controls,details);
-
-              // var pitch = rectPainter.getPitchAtCursor(screenPos.y);
-              // var absTime = rectPainter.getBeatNumAtCursor(screenPos.x);
-              // print("pitch: " + pitch.note + pitch.octave.toString());
-              // print("absTime: " + absTime.toString());
-
-              // var eventAtCursor = rectPainter.getNoteAtScreenPos(screenPos);
-              // print("event " + eventAtCursor.toString());
-
-              // if(eventAtCursor != null) {
-              //   // setState(() {
-              //   //   selectedNotes.putIfAbsent(eventAtCursor, () => true);
-              //   // });
-              //   setState(() {
-              //     cursor = SystemMouseCursors.click;
-              //   });
-              // }
-              // else {
-              //   setState(() {
-              //     cursor = MouseCursor.defer;
-              //   });
-              // }
-            },
-            child: Container(
-              color: themeData.scaffoldBackgroundColor,
-              child: CustomPaint(
-                painter: rectPainter,
-                child: Container(),
-                willChange: true,
+                  // if(eventAtCursor != null) {
+                  //   // setState(() {
+                  //   //   selectedNotes.putIfAbsent(eventAtCursor, () => true);
+                  //   // });
+                  //   setState(() {
+                  //     cursor = SystemMouseCursors.click;
+                  //   });
+                  // }
+                  // else {
+                  //   setState(() {
+                  //     cursor = MouseCursor.defer;
+                  //   });
+                  // }
+                },
+                child: Container(
+                  color: themeData.scaffoldBackgroundColor,
+                  child: CustomPaint(
+                    painter: rectPainter,
+                    child: Container(),
+                    willChange: true,
+                  ),
+                ),
               ),
             ),
-          ),
-        );
-      }))
-    ]);
+          );
+        }))
+      ]),
+    );
   }
 }
 
