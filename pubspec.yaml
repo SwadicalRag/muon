@@ -31,6 +31,22 @@ dependencies:
       url: git://github.com/google/flutter-desktop-embedding.git
       path: plugins/window_size
       ref: 85dde09b702a0cb1f5e1392d2f030bdc3d4e5be3
+  file_selector_platform_interface: ^1.0.2
+  file_selector_linux:
+    git:
+      url: git://github.com/google/flutter-desktop-embedding.git
+      path: plugins/file_selector/file_selector_linux
+      ref: 43901ebd12548a3c2a077d4dbeb3b56f0a0bdd09
+  file_selector_macos:
+    git:
+      url: git://github.com/google/flutter-desktop-embedding.git
+      path: plugins/file_selector/file_selector_macos
+      ref: 43901ebd12548a3c2a077d4dbeb3b56f0a0bdd09
+  file_selector_windows:
+    git:
+      url: git://github.com/google/flutter-desktop-embedding.git
+      path: plugins/file_selector/file_selector_windows
+      ref: 43901ebd12548a3c2a077d4dbeb3b56f0a0bdd09
   get: ^3.24.0
   kana_kit: ^1.0.4
 
