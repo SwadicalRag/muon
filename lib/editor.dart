@@ -187,6 +187,8 @@ class _MuonEditorState extends State<MuonEditor> {
                             onChanged: (String text) {
                               final hiraganaList = JapaneseUTF8.alphabetToHiragana(text);
 
+                              noteAtCursor.voice.sortNotesByTime();
+
                               final curNotePos = noteAtCursor.voice.notes.indexOf(noteAtCursor);
                               for(int i=curNotePos;i < noteAtCursor.voice.notes.length;i++) {
                                 if((i - curNotePos) < hiraganaList.length) {
