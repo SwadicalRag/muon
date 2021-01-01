@@ -3,8 +3,17 @@ import 'package:get/get.dart';
 
 import 'package:flutter/material.dart';
 import 'package:muon/editor.dart';
+import 'package:muon/serializable/settings.dart';
 
 import 'package:window_size/window_size.dart';
+
+final darkMode = getMuonSettings().darkMode.obs..listen((bool newVal) {
+  final settings = getMuonSettings();
+
+  settings.darkMode = newVal;
+
+  settings.save();
+});
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,8 +24,6 @@ void main() {
   
   runApp(MyApp());
 }
-
-final darkMode = false.obs;
 
 class MyApp extends StatelessWidget {
   @override
