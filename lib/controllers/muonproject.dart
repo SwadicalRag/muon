@@ -313,7 +313,7 @@ class MuonProjectController extends GetxController {
     var lastNoteEndTime = 0;
     for(final note in voice.notes) {
       if(note.startAtTime > lastNoteEndTime) {
-        musicXML.rest((note.startAtTime - lastNoteEndTime).toDouble(),1);
+        musicXML.rest((note.startAtTime.value - lastNoteEndTime).toDouble(),1);
       }
 
       var noteEvent = MusicXMLEventNote(musicXML);
