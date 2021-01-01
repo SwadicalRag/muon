@@ -256,6 +256,9 @@ class _PianoRollState extends State<PianoRoll> {
                     }
                   }
                 }
+                else if(details.kind != PointerDeviceKind.mouse) {
+                  _panning = true;
+                }
                 else {
                   _selecting = true;
                 }
