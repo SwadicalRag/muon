@@ -141,12 +141,13 @@ class _PianoRollState extends State<PianoRoll> {
             onPointerSignal: (details) {
               if (details is PointerScrollEvent) {
                 setState(() {
-                  if (isShiftKeyHeld) {
+                  if (isShiftKeyHeld && !isCtrlKeyHeld) {
                     xOffset = xOffset - details.scrollDelta.dy / xScale;
+                    yOffset = yOffset - details.scrollDelta.dx / yScale;
 
                     this.clampXY(constraits.maxHeight);
                   } else {
-                    if (isAltKeyHeld) {
+                    if (isShiftKeyHeld) {
                       double targetScaleX = max(
                           0.25, min(4, xScale - details.scrollDelta.dy / 80));
                       double xPointer = details.localPosition.dx - pianoKeysWidth;
@@ -155,8 +156,7 @@ class _PianoRollState extends State<PianoRoll> {
                       xScale = targetScaleX;
                       xOffset = -xTarget + xPointer / xScale;
                     }
-
-                    if (isCtrlKeyHeld) {
+                    else if (isCtrlKeyHeld) {
                       double targetScaleY = max(
                           0.25, min(4, yScale - details.scrollDelta.dy / 80));
                       if (((constraits.maxHeight / targetScaleY) <= 1920) ||
@@ -170,8 +170,9 @@ class _PianoRollState extends State<PianoRoll> {
                       }
                     }
 
-                    if (!isAltKeyHeld && !isCtrlKeyHeld) {
-                      yOffset = yOffset - details.scrollDelta.dy;
+                    if (!isShiftKeyHeld && !isCtrlKeyHeld) {
+                      yOffset = yOffset - details.scrollDelta.dy / yScale;
+                      xOffset = xOffset - details.scrollDelta.dx / xScale * 2;
                     }
 
                     this.clampXY(constraits.maxHeight);
