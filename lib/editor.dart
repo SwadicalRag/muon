@@ -151,6 +151,9 @@ class _MuonEditorState extends State<MuonEditor> {
                     }
                     currentProject.selectedNotes[noteAtCursor] = !currentProject.selectedNotes[noteAtCursor];
                   }
+                  else {
+                    currentProject.playheadTime.value = (pianoRoll.painter.getBeatNumAtCursor(mousePos.x) * currentProject.timeUnitsPerBeat.value).roundToDouble() / currentProject.timeUnitsPerBeat.value;
+                  }
                 }
                 else if(numClicks == 2) {
                   if(noteAtCursor != null) {
@@ -268,6 +271,8 @@ class _MuonEditorState extends State<MuonEditor> {
                     }
                   }
                 }
+
+                currentProject.playheadTime.value = note.startAtTime.value / currentProject.timeUnitsPerBeat.value;
               },
               (pianoRoll,mouseEvent,mouseRect) {
                 // final mousePos = Point(mouseEvent.localPosition.dx,mouseEvent.localPosition.dy);
@@ -279,8 +284,14 @@ class _MuonEditorState extends State<MuonEditor> {
 
                 var notes = pianoRoll.painter.getNotesTouchingRect(mouseRect);
 
+                double earliestTime = 1 / 0;
                 for(final note in notes) {
                   currentProject.selectedNotes[note] = true;
+                  earliestTime = min(earliestTime,note.startAtTime.value / currentProject.timeUnitsPerBeat.value);
+                }
+
+                if(earliestTime.isFinite) {
+                  currentProject.playheadTime.value = earliestTime;
                 }
               },
             ))

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -585,6 +586,37 @@ class PianoRollPainter extends CustomPainter {
       }
     }
 
+    // draw playhead
+    final playhead = Paint();
+    playhead.color = themeData.indicatorColor.withOpacity(0.75);
+    playhead.strokeWidth = 2 / xScale;
+    final playheadXVal = project.playheadTime.value * pixelsPerBeat;
+    canvas.drawVertices(
+      new Vertices(
+        VertexMode.triangles,
+        [
+          Offset(playheadXVal - 15 / xScale,-yOffset),
+          Offset(playheadXVal + 15 / xScale,-yOffset),
+          Offset(playheadXVal,-yOffset + 15 / yScale),
+        ]
+      ), 
+      BlendMode.overlay, 
+      playhead
+    );
+    canvas.drawVertices(
+      new Vertices(
+        VertexMode.triangles,
+        [
+          Offset(playheadXVal - 15 / xScale,-yOffset + size.height / yScale),
+          Offset(playheadXVal + 15 / xScale,-yOffset + size.height / yScale),
+          Offset(playheadXVal,-15 / yScale + -yOffset + size.height / yScale),
+        ]
+      ), 
+      BlendMode.overlay, 
+      playhead
+    );
+    canvas.drawLine(Offset(playheadXVal,-yOffset + 14 / yScale),Offset(playheadXVal,-yOffset + size.height / yScale - 14 / yScale),playhead);
+
     // draw notes on top of the grid
     int voiceID = 0;
     for (final voice in project.voices) {
@@ -773,24 +805,26 @@ class PianoRollPainter extends CustomPainter {
     }
 
     // draw "what am i looking at?" (waila)
-    final mouseBeatNum = max(0,getBeatNumAtCursor(curMousePos.x));
-    final mouseBeatSubDivNum = (mouseBeatNum * project.currentSubdivision.value).floor() % project.currentSubdivision.value + 1;
-    final mouseMeasureNum = (mouseBeatNum / project.beatsPerMeasure.value).ceil();
-    final mousePitch = getPitchAtCursor(curMousePos.y);
-    var wailaLabelPainter = new TextPainter(
-      text: new TextSpan(
-          style: new TextStyle(
-              color: themeData.brightness == Brightness.light ? Colors.grey[600] : Colors.grey[200], fontSize: 24),
-          text: mousePitch.note + mousePitch.octave.toString() + " | " + mouseMeasureNum.toString() + "." + mouseBeatNum.ceil().toString() + "." + mouseBeatSubDivNum.toString()),
-      textAlign: TextAlign.center,
-      textDirection: TextDirection.ltr,
-    )..layout();
-    var wailaRect = Rect.fromLTWH(size.width - 10 - wailaLabelPainter.width, size.height - 10 - wailaLabelPainter.height, 10 + wailaLabelPainter.width, 10 + wailaLabelPainter.height);
-    var wailaShadowPath = new Path();
-    wailaShadowPath.addRect(wailaRect);
-    canvas.drawShadow(wailaShadowPath, Colors.black, 10, false);
-    canvas.drawRect(wailaRect, Paint()..color = themeData.scaffoldBackgroundColor);
-    wailaLabelPainter.paint(canvas,new Offset(wailaRect.left + 5, wailaRect.top + 5));
+    if(curMousePos != null) {
+      final mouseBeatNum = max(0,getBeatNumAtCursor(curMousePos.x));
+      final mouseBeatSubDivNum = (mouseBeatNum * project.currentSubdivision.value).floor() % project.currentSubdivision.value + 1;
+      final mouseMeasureNum = (mouseBeatNum / project.beatsPerMeasure.value).ceil();
+      final mousePitch = getPitchAtCursor(curMousePos.y);
+      var wailaLabelPainter = new TextPainter(
+        text: new TextSpan(
+            style: new TextStyle(
+                color: themeData.brightness == Brightness.light ? Colors.grey[600] : Colors.grey[200], fontSize: 24),
+            text: mousePitch.note + mousePitch.octave.toString() + " | " + mouseMeasureNum.toString() + "." + mouseBeatNum.ceil().toString() + "." + mouseBeatSubDivNum.toString()),
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+      )..layout();
+      var wailaRect = Rect.fromLTWH(size.width - 10 - wailaLabelPainter.width, size.height - 10 - wailaLabelPainter.height, 10 + wailaLabelPainter.width, 10 + wailaLabelPainter.height);
+      var wailaShadowPath = new Path();
+      wailaShadowPath.addRect(wailaRect);
+      canvas.drawShadow(wailaShadowPath, Colors.black, 10, false);
+      canvas.drawRect(wailaRect, Paint()..color = themeData.scaffoldBackgroundColor);
+      wailaLabelPainter.paint(canvas,new Offset(wailaRect.left + 5, wailaRect.top + 5));
+    }
   }
 
   @override
