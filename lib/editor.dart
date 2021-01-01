@@ -141,6 +141,10 @@ class _MuonEditorState extends State<MuonEditor> {
             tooltip: "Play",
             onPressed: () async {
               for(final voice in currentProject.voices) {
+                await voice.makeLabels();
+                await voice.runNeutrino();
+                await voice.vocodeWORLD();
+
                 final audioPlayer = await voice.getAudioPlayer();
 
                 final suc = await audioPlayer.play();

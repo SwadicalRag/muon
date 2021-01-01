@@ -45,7 +45,7 @@ class MuonVoiceController extends GetxController {
     notes.add(note);
   }
 
-  void makeLabels() async {
+  Future<void> makeLabels() async {
     final musicXML = exportVoiceToMusicXML();
     final musicXMLString = serializeMusicXML(musicXML);
 
@@ -81,7 +81,7 @@ class MuonVoiceController extends GetxController {
     });
   }
 
-  void runNeutrino() async {
+  Future<void> runNeutrino() async {
     if(!Directory(project.getProjectFilePath("neutrino/")).existsSync()) {
       Directory(project.getProjectFilePath("neutrino/")).createSync();
     }
@@ -103,7 +103,7 @@ class MuonVoiceController extends GetxController {
     });
   }
 
-  void vocodeWORLD() async {
+  Future<void> vocodeWORLD() async {
     if(!Directory(project.getProjectFilePath("audio/")).existsSync()) {
       Directory(project.getProjectFilePath("audio/")).createSync();
     }
@@ -123,7 +123,7 @@ class MuonVoiceController extends GetxController {
     });
   }
 
-  void vocodeNSF() async {
+  Future<void> vocodeNSF() async {
     if(!Directory(project.getProjectFilePath("audio/")).existsSync()) {
       Directory(project.getProjectFilePath("audio/")).createSync();
     }
