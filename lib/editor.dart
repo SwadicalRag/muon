@@ -1,4 +1,6 @@
 
+import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -10,6 +12,8 @@ import 'package:muon/controllers/muonproject.dart';
 import 'package:muon/logic/japanese.dart';
 import 'package:muon/main.dart';
 import 'package:muon/pianoroll.dart';
+import 'package:muon/serializable/settings.dart';
+import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 
 final currentProject = MuonProjectController.defaultProject();
 
@@ -21,8 +25,85 @@ class MuonEditor extends StatefulWidget {
 }
 
 class _MuonEditorState extends State<MuonEditor> {
+  bool _firstTimeSetupDone = false;
+
   @override
   Widget build(BuildContext context) {
+    final settings = getMuonSettings();
+
+    if((settings.neutrinoDir == "") && !_firstTimeSetupDone) {
+      // perform first time setup
+
+      _firstTimeSetupDone = true;
+
+      Timer(Duration(milliseconds: 500),() {
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false, // user must tap button!
+          builder: (BuildContext context) {
+            return Scaffold(
+              body: AlertDialog(
+                title: Text("Hello and welcome!"),
+                content: SingleChildScrollView(
+                  child: ListBody(
+                    children: <Widget>[
+                      Text("Before you start using Muon, we need to do some housekeeping!"),
+                      SizedBox(height: 15,),
+                      RaisedButton(
+                        child: Text("Choose Neutrino SDK Folder Location"),
+                        onPressed: () {
+                          FileSelectorPlatform.instance.getDirectoryPath(
+                            confirmButtonText: "Open Neutrino SDK",
+                          )
+                          .catchError((err) {print("internal file browser error: " + err.toString());}) // oh wow i am so naughty
+                          .then((value) {
+                            if(value != null) {
+                              if(Directory(value).existsSync()) {
+                                if(File(value + "/bin/NEUTRINO.exe").existsSync() || File(value + "/bin/NEUTRINO").existsSync()) {
+                                  settings.neutrinoDir = value;
+                                  settings.save();
+                                }
+                              }
+                            }
+                          });
+                        },
+                      ),
+                      SizedBox(height: 15,),
+                      SwitchListTile(
+                        title: Text("Please burn my eyes"),
+                        secondary: Icon(Icons.lightbulb_outline),
+                        value: !darkMode.value,
+                        onChanged: (value) {
+                          darkMode.value = !value;
+                        },
+                      )
+                    ],
+                  ),
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    child: Text("I'm all set!"),
+                    onPressed: () {
+                      if(settings.neutrinoDir == "") {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(backgroundColor: Theme.of(context).errorColor,
+                            content: new Text('Error: Please choose a valid directory for the NEUTRINO library!'),
+                            duration: new Duration(seconds: 5),
+                          )
+                        );
+                      }
+                      else {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      });
+    }
     final themeData = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
