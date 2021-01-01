@@ -437,6 +437,46 @@ class _MuonEditorState extends State<MuonEditor> {
                     // dumb hack to force repaint
                     pianoRoll.state.setState(() {});
                   }
+                  else if(keyEvent.isKeyPressed(LogicalKeyboardKey.keyC) || keyEvent.isKeyPressed(LogicalKeyboardKey.keyX)) {
+                    // copy / cut
+
+                    bool cut = keyEvent.isKeyPressed(LogicalKeyboardKey.keyX);
+                    currentProject.copiedNotes.clear();
+
+                    int earliestTime = 2147483647; // assuming int32, I cannot be bothered verifying this
+                    for(final selectedNote in currentProject.selectedNotes.keys) {
+                      if(currentProject.selectedNotes[selectedNote]) {
+                        currentProject.copiedNotes.add(selectedNote.toSerializable());
+                        earliestTime = min(earliestTime,selectedNote.startAtTime.value);
+
+                        if(cut) {
+                          selectedNote.voice.notes.remove(selectedNote);
+                        }
+                      }
+                    }
+
+                    for(final note in currentProject.copiedNotes) {
+                      note.startAtTime -= earliestTime;
+                    }
+
+                    // dumb hack to force repaint
+                    pianoRoll.state.setState(() {});
+                  }
+                  else if(keyEvent.isKeyPressed(LogicalKeyboardKey.keyV)) {
+                    // paste
+
+                    final currentVoice = currentProject.voices[0];
+                    if(currentVoice != null) {
+                      for(final note in currentProject.copiedNotes) {
+                        final cNote = MuonNoteController.fromSerializable(note);
+                        cNote.startAtTime.value = cNote.startAtTime.value + (currentProject.playheadTime.value * currentProject.timeUnitsPerBeat.value).floor();
+                        currentVoice.addNote(cNote);
+                      }
+                    }
+
+                    // dumb hack to force repaint
+                    pianoRoll.state.setState(() {});
+                  }
                 }
 
                 if(keyEvent.isKeyPressed(LogicalKeyboardKey.delete)) {
