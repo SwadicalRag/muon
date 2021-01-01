@@ -5,6 +5,7 @@ import 'package:muon/controllers/muonnote.dart';
 import 'package:muon/controllers/muonvoice.dart';
 import 'package:muon/serializable/muon.dart';
 import 'package:muon/logic/musicxml.dart';
+import 'package:path/path.dart' as p;
 
 class MuonProjectController extends GetxController {
   final projectDir = "".obs;
@@ -26,6 +27,15 @@ class MuonProjectController extends GetxController {
   // subdivision manager
   final currentSubdivision = 1.obs;
 
+  String getProjectFilePath(String filePath) {
+    return p.absolute(projectDir + "/" + filePath);
+  }
+
+  void addVoice(MuonVoiceController voice) {
+    voice.project = this;
+    voices.add(voice);
+  }
+
   void setSubdivision(int subdivision) {
     factorTimeUnitsPerBeat();
     setTimeUnitsPerBeat(timeUnitsPerBeat.value * subdivision);
@@ -41,7 +51,7 @@ class MuonProjectController extends GetxController {
     this.currentSubdivision.value = controller.currentSubdivision.value;
 
     this.voices.clear();
-    for(final voice in controller.voices) {this.voices.add(voice);}
+    for(final voice in controller.voices) {this.addVoice(voice);}
 
     this.selectedNotes.clear();
     for(final selectedNoteKey in controller.selectedNotes.keys) {
@@ -55,6 +65,7 @@ class MuonProjectController extends GetxController {
     out.projectDir.value = "startup";
 
     final baseVoice = MuonVoiceController();
+    baseVoice.modelName.value = "KIRITAN";
     baseVoice.addNote(
       MuonNoteController()
         ..startAtTime.value = 0
@@ -87,7 +98,7 @@ class MuonProjectController extends GetxController {
         ..octave.value = 4
         ..lyric.value = "ら"
     );
-    out.voices.add(baseVoice);
+    out.addVoice(baseVoice);
 
     out.setSubdivision(4);
 
@@ -229,7 +240,7 @@ class MuonProjectController extends GetxController {
 
         voice.sortNotesByTime();
 
-        this.voices.add(voice);
+        this.addVoice(voice);
 
         factorTimeUnitsPerBeat();
 
@@ -276,7 +287,7 @@ class MuonProjectController extends GetxController {
 
     voice.sortNotesByTime();
 
-    this.voices.add(voice);
+    this.addVoice(voice);
 
     factorTimeUnitsPerBeat();
   }
@@ -355,7 +366,7 @@ class MuonProjectController extends GetxController {
     out.beatsPerMeasure.value = obj.beatsPerMeasure;
     out.beatValue.value = obj.beatValue;
     for(final voice in obj.voices) {
-      out.voices.add(MuonVoiceController.fromSerializable(voice,out));
+      out.addVoice(MuonVoiceController.fromSerializable(voice,out));
     }
     return out;
   }

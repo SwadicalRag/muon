@@ -49,3 +49,9 @@ app.*.map.json
 muon_settings.json
 project.json
 *.musicxml
+**/label/**/*.lab
+**/neutrino/**/*.f0
+**/neutrino/**/*.mgc
+**/neutrino/**/*.bap
+**/audio/*_world.wav
+**/audio/*_nsf.wav
