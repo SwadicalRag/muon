@@ -24,6 +24,7 @@ class MuonProjectController extends GetxController {
   final selectedNotes = Map<MuonNoteController,bool>().obs;
   final playheadTime = 0.0.obs;
   List<MuonNote> copiedNotes = [];
+  final internalStatus = "idle".obs;
   
   // subdivision manager
   final currentSubdivision = 1.obs;

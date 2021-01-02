@@ -267,9 +267,9 @@ packages:
   flutter_audio_desktop:
     dependency: "direct main"
     description:
-      name: flutter_audio_desktop
-      url: "https://pub.dartlang.org"
-    source: hosted
+      path: "../flutter_audio_desktop"
+      relative: true
+    source: path
     version: "0.0.8"
   flutter_driver:
     dependency: transitive

@@ -144,15 +144,18 @@ class MuonVoiceController extends GetxController {
   }
 
   AudioPlayer audioPlayer;
-  Future<AudioPlayer> getAudioPlayer() async {
+  int audioPlayerDuration = 0;
+  Future<AudioPlayer> getAudioPlayer([Duration playPos]) async {
     final voiceID = project.voices.indexOf(this);
     if(audioPlayer == null) {
       audioPlayer = new AudioPlayer(id: voiceID);
     }
 
+    await audioPlayer.unload();
     final suc = await audioPlayer.load(project.getProjectFilePath("audio/" + voiceID.toString() + "_voice_world.wav"));
 
-    audioPlayer.setPosition(Duration(seconds: 2));
+    audioPlayerDuration = (await audioPlayer.getDuration()).inMilliseconds;
+    audioPlayer.setPosition(playPos ?? Duration(seconds: 2));
 
     if(!suc) {
       audioPlayer = null;
