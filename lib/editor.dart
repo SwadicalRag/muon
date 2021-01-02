@@ -28,6 +28,62 @@ class MuonEditor extends StatefulWidget {
 class _MuonEditorState extends State<MuonEditor> {
   bool _firstTimeSetupDone = false;
 
+  Future<void> _playAudio() async {
+    if(currentProject.internalStatus.value != "idle") {return;}
+
+    final playPos = Duration(
+      milliseconds: 2000 + 
+        (
+          1000 * 
+          (
+            currentProject.playheadTime.value / 
+            (currentProject.bpm.value / 60)
+          )
+        ).floor()
+      );
+    for(final voice in currentProject.voices) {
+      if(voice.audioPlayer != null) {
+        await voice.audioPlayer.unload();
+      }
+      
+      currentProject.internalStatus.value = "compiling";
+      await voice.makeLabels();
+      await voice.runNeutrino();
+      await voice.vocodeWORLD();
+
+      final audioPlayer = await voice.getAudioPlayer(playPos);
+
+      await audioPlayer.setPosition(playPos);
+      final suc = await audioPlayer.play();
+
+      if(suc) {
+        currentProject.internalStatus.value = "playing";
+      }
+      else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(backgroundColor: Theme.of(context).errorColor,
+            content: new Text('Unable to play audio!'),
+            duration: new Duration(seconds: 5),
+          )
+        );
+      }
+    }
+  }
+
+  Future<void> _stopAudio() async {
+    for(final voice in currentProject.voices) {
+      if(voice.audioPlayer != null) {
+        voice.audioPlayer.unload();
+        if(currentProject.internalStatus.value == "playing") {
+          currentProject.internalStatus.value = "idle";
+        }
+        else {
+          currentProject.playheadTime.value = 0;
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = getMuonSettings();
@@ -37,9 +93,17 @@ class _MuonEditorState extends State<MuonEditor> {
 
       if(voice != null) {
         if(voice.audioPlayer != null) {
-          if(voice.audioPlayer.isPlaying) {
-            int voicePos = (await voice.audioPlayer.getPosition()).inMilliseconds - 2000;
-            currentProject.playheadTime.value = voicePos / 1000 * (currentProject.bpm / 60);
+          if(currentProject.internalStatus.value == "playing") {
+            int curPos = (await voice.audioPlayer.getPosition()).inMilliseconds;
+
+            if(curPos >= voice.audioPlayerDuration) {
+              currentProject.playheadTime.value = 0;
+              currentProject.internalStatus.value = "idle";
+            }
+            else {
+              int voicePos = curPos - 2000;
+              currentProject.playheadTime.value = voicePos / 1000 * (currentProject.bpm / 60);
+            }
           }
         }
       }
@@ -137,28 +201,37 @@ class _MuonEditorState extends State<MuonEditor> {
         title: Text("Muon Editor"),
         actions: [
           IconButton(
-            icon: const Icon(Icons.play_arrow),
-            tooltip: "Play",
-            onPressed: () async {
-              for(final voice in currentProject.voices) {
-                await voice.makeLabels();
-                await voice.runNeutrino();
-                await voice.vocodeWORLD();
-
-                final audioPlayer = await voice.getAudioPlayer();
-
-                final suc = await audioPlayer.play();
-
-                if(suc) {
-                }
-              }
+            icon: const Icon(Icons.exposure_plus_1),
+            tooltip: "Add subdivision",
+            onPressed: () {
+              currentProject.setSubdivision(currentProject.currentSubdivision.value + 1);
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.exposure_minus_1),
+            tooltip: "Subtract subdivision",
+            onPressed: () {
+              currentProject.setSubdivision(max(1,currentProject.currentSubdivision.value - 1));
+            },
+          ),
+          SizedBox(width: 40,),
+          Obx(() => IconButton(
+            icon: const Icon(Icons.play_arrow),
+            tooltip: "Play",
+            color: currentProject.internalStatus.value == "compiling" ? 
+              Colors.yellow : 
+                currentProject.internalStatus.value == "playing" ?
+                  Colors.green :
+                  Colors.white,
+            onPressed: () {
+              _playAudio();
+            },
+          )),
           IconButton(
             icon: const Icon(Icons.stop),
             tooltip: "Stop",
             onPressed: () {
-              
+              _stopAudio();
             },
           ),
           SizedBox(width: 40,),
@@ -379,8 +452,8 @@ class _MuonEditorState extends State<MuonEditor> {
                 final deltaSemiTones = (pianoRoll.painter.screenPixelsToSemitones(mousePos.y - mouseFirstPos.y) + fpDeltaSemiTones).floor();
 
                 final fpDeltaBeats = (pianoRoll.painter.getBeatNumAtCursor(mouseFirstPos.x) % 1);
-                final deltaBeats = pianoRoll.painter.screenPixelsToBeats(mousePos.x - mouseFirstPos.x) + fpDeltaBeats / currentProject.currentSubdivision.value;
-                final deltaSegments = deltaBeats * currentProject.currentSubdivision.value;
+                final deltaBeats = pianoRoll.painter.screenPixelsToBeats(mousePos.x - mouseFirstPos.x) + fpDeltaBeats / currentProject.timeUnitsPerBeat.value;
+                final deltaSegments = deltaBeats * currentProject.timeUnitsPerBeat.value;
                 final deltaSegmentsFixed = deltaSegments.floor();
 
                 for(final selectedNote in currentProject.selectedNotes.keys) {
@@ -536,6 +609,14 @@ class _MuonEditorState extends State<MuonEditor> {
 
                   // dumb hack to force repaint
                   pianoRoll.state.setState(() {});
+                }
+                else if(keyEvent.isKeyPressed(LogicalKeyboardKey.space)) {
+                  if(currentProject.internalStatus.value == "playing") {
+                    _stopAudio();
+                  }
+                  else {
+                    _playAudio();
+                  }
                 }
               },
             ))
