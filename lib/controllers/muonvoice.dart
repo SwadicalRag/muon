@@ -128,7 +128,11 @@ class MuonVoiceController extends GetxController {
       Directory(project.getProjectFilePath("neutrino/")).createSync();
     }
 
-    print(getRawProgramPath("model/" + (modelName.value) + "/"));
+    if(!Directory(project.getProjectFilePath("label/timing/")).existsSync()) {
+      Directory(project.getProjectFilePath("label/timing/")).createSync();
+    }
+
+    print(getRawProgramPath("label/timing/" + voiceFileName + ".lab"));
     await Process.run(getProgramPath("NEUTRINO"), [
       project.getProjectFilePath("label/full/" + voiceFileName + ".lab"),
       project.getProjectFilePath("label/timing/" + voiceFileName + ".lab"),

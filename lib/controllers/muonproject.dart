@@ -50,7 +50,7 @@ class MuonProjectController extends GetxController {
   }
 
   int getLabelMillisecondOffset() {
-    return (this.beatsPerMeasure / (this.bpm.value / 60) * 1000).round();
+    return (this.beatsPerMeasure / (this.bpm.value / 60) * 1000 * (4 / this.beatValue.value)).round();
   }
 
   void updateWith(MuonProjectController controller) {
