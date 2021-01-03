@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:muon/controllers/muonnote.dart';
 import 'package:muon/controllers/muonproject.dart';
@@ -7,6 +8,7 @@ import 'package:muon/serializable/muon.dart';
 import 'package:muon/serializable/settings.dart';
 import 'package:muon/logic/musicxml.dart';
 import 'package:flutter_audio_desktop/flutter_audio_desktop.dart';
+import 'package:path/path.dart' as p;
 
 String getRawProgramPath(String programName) {
   return getMuonSettings().neutrinoDir + "/" + programName;
@@ -22,11 +24,35 @@ String getProgramPath(String programName) {
   return out;
 }
 
+List<String> getAllVoiceModels() {
+  final List<String> items = [];
+
+  final modelsDir = Directory(getRawProgramPath("model"));
+  final modelsDirFiles = modelsDir.listSync();
+
+  for(final modelsDirFile in modelsDirFiles) {
+    if(modelsDirFile is Directory) {
+      final modelName = p.relative(modelsDirFile.path,from: modelsDir.path);
+      items.add(modelName);
+    }
+  }
+
+  items.sort();
+
+  return items;
+}
+
+String getDefaultVoiceModel() {
+  final models = getAllVoiceModels();
+  if(models.length == 0) {return "";}
+  return models[0];
+}
+
 class MuonVoiceController extends GetxController {
   MuonProjectController project;
 
   // voice metadata
-  final modelName = "".obs;
+  final modelName = getDefaultVoiceModel().obs;
   final randomiseTiming = false.obs;
 
   // notes
@@ -44,6 +70,22 @@ class MuonVoiceController extends GetxController {
     note.voice = this;
     notes.add(note);
   }
+
+  static final noteColors = [
+    Colors.blue,
+    Colors.purple,
+    Colors.amber,
+    Colors.indigo,
+    Colors.green,
+    Colors.teal,
+    Colors.brown,
+  ];
+  get color {
+    final voiceID = (project != null ? project.voices.indexOf(this) : -1) + 1;
+    return noteColors[voiceID % noteColors.length];
+  }
+
+  String get voiceFileName => project.projectFileNameNoExt + "_" + project.voices.indexOf(this).toString() + "_voice";
 
   Future<void> makeLabels() async {
     final musicXML = exportVoiceToMusicXML();
@@ -65,15 +107,15 @@ class MuonVoiceController extends GetxController {
       Directory(project.getProjectFilePath("label/mono/")).createSync();
     }
 
-    final musicXMLPath = project.getProjectFilePath("musicxml/" + project.voices.indexOf(this).toString() + "_voice.musicxml");
+    final musicXMLPath = project.getProjectFilePath("musicxml/" + voiceFileName + ".musicxml");
 
     File(musicXMLPath)
       .writeAsStringSync(musicXMLString);
 
     await Process.run(getProgramPath("musicXMLtoLabel"), [
       musicXMLPath,
-      project.getProjectFilePath("label/full/" + project.voices.indexOf(this).toString() + "_voice.lab"),
-      project.getProjectFilePath("label/mono/" + project.voices.indexOf(this).toString() + "_voice.lab"),
+      project.getProjectFilePath("label/full/" + voiceFileName + ".lab"),
+      project.getProjectFilePath("label/mono/" + voiceFileName + ".lab"),
       "-x",
       getRawProgramPath("settings/dic"),
     ]).then((ProcessResult results) {
@@ -86,13 +128,13 @@ class MuonVoiceController extends GetxController {
       Directory(project.getProjectFilePath("neutrino/")).createSync();
     }
 
-    print(getRawProgramPath("model/" + (modelName.value ?? "KIRITAN") + "/"));
+    print(getRawProgramPath("model/" + (modelName.value) + "/"));
     await Process.run(getProgramPath("NEUTRINO"), [
-      project.getProjectFilePath("label/full/" + project.voices.indexOf(this).toString() + "_voice.lab"),
-      project.getProjectFilePath("label/timing/" + project.voices.indexOf(this).toString() + "_voice.lab"),
-      project.getProjectFilePath("neutrino/" + project.voices.indexOf(this).toString() + "_voice.f0"),
-      project.getProjectFilePath("neutrino/" + project.voices.indexOf(this).toString() + "_voice.mgc"),
-      project.getProjectFilePath("neutrino/" + project.voices.indexOf(this).toString() + "_voice.bap"),
+      project.getProjectFilePath("label/full/" + voiceFileName + ".lab"),
+      project.getProjectFilePath("label/timing/" + voiceFileName + ".lab"),
+      project.getProjectFilePath("neutrino/" + voiceFileName + ".f0"),
+      project.getProjectFilePath("neutrino/" + voiceFileName + ".mgc"),
+      project.getProjectFilePath("neutrino/" + voiceFileName + ".bap"),
       getRawProgramPath("model/" + modelName.value + "/"),
       "-n","8",
       "-k","0",
@@ -108,14 +150,14 @@ class MuonVoiceController extends GetxController {
       Directory(project.getProjectFilePath("audio/")).createSync();
     }
 
-    print(getRawProgramPath("model/" + (modelName.value ?? "KIRITAN") + "/"));
+    print(getRawProgramPath("model/" + (modelName.value) + "/"));
     await Process.run(getProgramPath("WORLD"), [
-      project.getProjectFilePath("neutrino/" + project.voices.indexOf(this).toString() + "_voice.f0"),
-      project.getProjectFilePath("neutrino/" + project.voices.indexOf(this).toString() + "_voice.mgc"),
-      project.getProjectFilePath("neutrino/" + project.voices.indexOf(this).toString() + "_voice.bap"),
+      project.getProjectFilePath("neutrino/" + voiceFileName + ".f0"),
+      project.getProjectFilePath("neutrino/" + voiceFileName + ".mgc"),
+      project.getProjectFilePath("neutrino/" + voiceFileName + ".bap"),
       "-f","1.0",
       "-m","1.0",
-      "-o",project.getProjectFilePath("audio/" + project.voices.indexOf(this).toString() + "_voice_world.wav"),
+      "-o",project.getProjectFilePath("audio/" + voiceFileName + "_world.wav"),
       "-n","8",
       "-t",
     ]).then((ProcessResult results) {
@@ -128,15 +170,15 @@ class MuonVoiceController extends GetxController {
       Directory(project.getProjectFilePath("audio/")).createSync();
     }
 
-    print(getRawProgramPath("model/" + (modelName.value ?? "KIRITAN") + "/"));
+    print(getRawProgramPath("model/" + (modelName.value) + "/"));
     await Process.run(getProgramPath("NSF_IO"), [
-      project.getProjectFilePath("label/full/" + project.voices.indexOf(this).toString() + "_voice.lab"),
-      project.getProjectFilePath("label/timing/" + project.voices.indexOf(this).toString() + "_voice.lab"),
-      project.getProjectFilePath("neutrino/" + project.voices.indexOf(this).toString() + "_voice.f0"),
-      project.getProjectFilePath("neutrino/" + project.voices.indexOf(this).toString() + "_voice.mgc"),
-      project.getProjectFilePath("neutrino/" + project.voices.indexOf(this).toString() + "_voice.bap"),
+      project.getProjectFilePath("label/full/" + voiceFileName + ".lab"),
+      project.getProjectFilePath("label/timing/" + voiceFileName + ".lab"),
+      project.getProjectFilePath("neutrino/" + voiceFileName + ".f0"),
+      project.getProjectFilePath("neutrino/" + voiceFileName + ".mgc"),
+      project.getProjectFilePath("neutrino/" + voiceFileName + ".bap"),
       modelName.value,
-      project.getProjectFilePath("audio/" + project.voices.indexOf(this).toString() + "_voice_nsf.wav"),
+      project.getProjectFilePath("audio/" + voiceFileName + "_nsf.wav"),
       "-t",
     ],workingDirectory: getRawProgramPath("")).then((ProcessResult results) {
       print(results.stdout);
@@ -152,7 +194,7 @@ class MuonVoiceController extends GetxController {
     }
 
     await audioPlayer.unload();
-    final suc = await audioPlayer.load(project.getProjectFilePath("audio/" + voiceID.toString() + "_voice_world.wav"));
+    final suc = await audioPlayer.load(project.getProjectFilePath("audio/" + voiceFileName + "_world.wav"));
 
     audioPlayerDuration = (await audioPlayer.getDuration()).inMilliseconds;
     audioPlayer.setPosition(playPos ?? Duration(seconds: 2));
