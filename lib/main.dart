@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:get/get.dart';
 
 import 'package:flutter/material.dart';
+import 'package:muon/licenses.dart';
 import 'package:muon/editor.dart';
 import 'package:muon/serializable/settings.dart';
 
@@ -21,6 +22,8 @@ void main() {
     setWindowTitle("Muon Editor");
     setWindowMinSize(Size(1280, 720));
   }
+
+  addLicenses();
   
   runApp(MyApp());
 }

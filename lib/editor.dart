@@ -48,6 +48,108 @@ class MuonEditor extends StatefulWidget {
 class _MuonEditorState extends State<MuonEditor> {
   bool _firstTimeSetupDone = false;
 
+  void _welcomeScreen() {
+    Timer(Duration(milliseconds: 1),() {
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false, // user must tap button!
+        builder: (BuildContext context) {
+          return Scaffold(
+            body: AlertDialog(
+              title: Center(child: Text("Welcome to Muon!")),
+              content: SingleChildScrollView(
+                child: ListBody(
+                  children: <Widget>[
+                    RaisedButton(
+                      child: Text("Create New Project"),
+                      onPressed: () {
+                        _createNewProject();
+                      }
+                    ),
+                    SizedBox(height: 10),
+                    RaisedButton(
+                      child: Text("Open Project"),
+                      onPressed: () {
+                        _openProject(context);
+                      }
+                    )
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text("About"),
+                  onPressed: () {
+                    showAboutDialog(
+                      context: context,
+                      applicationVersion: "0.0.1",
+                      applicationName: "Muon",
+                      applicationLegalese: "copyright (c) swadical 2021",
+                    );
+                  },
+                ),
+                OutlineButton(
+                  child: Text("Quit"),
+                  onPressed: () {
+                    exit(0);
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    });
+  }
+
+  void _openProject(BuildContext context) {
+    FileSelectorPlatform.instance.openFile(
+      confirmButtonText: "Open Project",
+      acceptedTypeGroups: [XTypeGroup(
+        label: "Muon Project Files",
+        extensions: ['json'],
+      )],
+    )
+    .then((value) {
+      if(value != null) {
+        final proj = MuonProjectController.loadFromFile(value.path);
+        currentProject.updateWith(proj);
+      }
+    })
+    .catchError((err) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Theme.of(context).errorColor,
+          content: new Text("internal error: " + err.toString()),
+          duration: new Duration(seconds: 10),
+        )
+      );
+    }); // oh wow i am so naughty
+  }
+
+  void _createNewProject() {
+    FileSelectorPlatform.instance.getSavePath(
+      confirmButtonText: "Create Project",
+      acceptedTypeGroups: [XTypeGroup(
+        label: "Muon Project Files",
+        extensions: ['json'],
+      )],
+      suggestedName: "project",
+    )
+    .then((value) {
+      if(value != null) {
+        currentProject.updateWith(MuonProjectController.defaultProject());
+        currentProject.projectDir.value = p.dirname(value);
+        currentProject.projectFileName.value = p.basename(value);
+        if(!currentProject.projectFileName.value.endsWith(".json")) {
+          currentProject.projectFileName.value += ".json";
+        }
+        currentProject.save();
+      }
+    })
+    .catchError((err) {print("internal error: " + err.toString());}); // oh wow i am so naughty
+  }
+
   Future<void> _playAudio() async {
     if(currentProject.internalStatus.value != "idle") {return;}
 
@@ -285,8 +387,8 @@ class _MuonEditorState extends State<MuonEditor> {
                         );
                       }
                       else {
-                        currentProject.updateWith(MuonProjectController.defaultProject());
                         Navigator.of(subContext, rootNavigator: true).pop();
+                        _welcomeScreen();
                       }
                     },
                   ),
@@ -297,6 +399,12 @@ class _MuonEditorState extends State<MuonEditor> {
         );
       });
     }
+    else if((settings.neutrinoDir != "") && !_firstTimeSetupDone) {
+      _firstTimeSetupDone = true;
+
+      _welcomeScreen();
+    }
+
     final themeData = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
@@ -385,54 +493,14 @@ class _MuonEditorState extends State<MuonEditor> {
             icon: const Icon(Icons.folder),
             tooltip: "Load",
             onPressed: () {
-              FileSelectorPlatform.instance.openFile(
-                confirmButtonText: "Open Project",
-                acceptedTypeGroups: [XTypeGroup(
-                  label: "Muon Project Files",
-                  extensions: ['json'],
-                )],
-              )
-              .then((value) {
-                if(value != null) {
-                  final proj = MuonProjectController.loadFromFile(value.path);
-                  currentProject.updateWith(proj);
-                }
-              })
-              .catchError((err) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: themeData.errorColor,
-                    content: new Text("internal error: " + err.toString()),
-                    duration: new Duration(seconds: 10),
-                  )
-                );
-              }); // oh wow i am so naughty
+              _openProject(context);
             },
           ),
           IconButton(
             icon: const Icon(Icons.create),
             tooltip: "New project",
             onPressed: () {
-              FileSelectorPlatform.instance.getSavePath(
-                confirmButtonText: "Create Project",
-                acceptedTypeGroups: [XTypeGroup(
-                  label: "Muon Project Files",
-                  extensions: ['json'],
-                )],
-                suggestedName: "project",
-              )
-              .then((value) {
-                if(value != null) {
-                  currentProject.updateWith(MuonProjectController.defaultProject());
-                  currentProject.projectDir.value = p.dirname(value);
-                  currentProject.projectFileName.value = p.basename(value);
-                  if(!currentProject.projectFileName.value.endsWith(".json")) {
-                    currentProject.projectFileName.value += ".json";
-                  }
-                  currentProject.save();
-                }
-              })
-              .catchError((err) {print("internal error: " + err.toString());}); // oh wow i am so naughty
+              _createNewProject();
             },
           ),
           SizedBox(width: 20,),
