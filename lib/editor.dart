@@ -63,6 +63,7 @@ class _MuonEditorState extends State<MuonEditor> {
                     RaisedButton(
                       child: Text("Create New Project"),
                       onPressed: () {
+                        Navigator.of(context, rootNavigator: true).pop();
                         _createNewProject();
                       }
                     ),
@@ -70,6 +71,7 @@ class _MuonEditorState extends State<MuonEditor> {
                     RaisedButton(
                       child: Text("Open Project"),
                       onPressed: () {
+                        Navigator.of(context, rootNavigator: true).pop();
                         _openProject(context);
                       }
                     )
