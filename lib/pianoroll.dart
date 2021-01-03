@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -110,7 +111,8 @@ class _PianoRollState extends State<PianoRoll> {
   }
 
   _onProjectUpdate() {
-    setState(() {});
+    // setState(() {});
+    repaint();
   }
 
   void setCursor(MouseCursor cursor) {
@@ -142,6 +144,12 @@ class _PianoRollState extends State<PianoRoll> {
     }
   }
 
+  final _repaint = ChangeNotifier();
+
+  void repaint() {
+    _repaint.notifyListeners();
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeData = Theme.of(context);
@@ -158,7 +166,7 @@ class _PianoRollState extends State<PianoRoll> {
           this.clampXY(constraits.maxHeight);
 
           var rectPainter = PianoRollPainter(project, selectedNotes, themeData,
-              pianoKeysWidth, xOffset, yOffset, xScale, yScale, selectionRect, curMousePos);
+              pianoKeysWidth, xOffset, yOffset, xScale, yScale, selectionRect, curMousePos, _repaint);
 
           final controls = PianoRollControls();
           controls.painter = rectPainter;
@@ -381,7 +389,7 @@ class _PianoRollState extends State<PianoRoll> {
 
 class PianoRollPainter extends CustomPainter {
   PianoRollPainter(this.project, this.selectedNotes, this.themeData, this.pianoKeysWidth, this.xOffset, this.yOffset, this.xScale,
-      this.yScale, this.selectionRect, this.curMousePos);
+      this.yScale, this.selectionRect, this.curMousePos, Listenable repaint) : super(repaint: repaint);
   final MuonProjectController project;
   final Map<MuonNoteController,bool> selectedNotes;
   final ThemeData themeData;
@@ -561,16 +569,6 @@ class PianoRollPainter extends CustomPainter {
     return out;
   }
 
-  static final noteColors = [
-    Colors.blue,
-    Colors.purple,
-    Colors.amber,
-    Colors.indigo,
-    Colors.green,
-    Colors.teal,
-    Colors.brown,
-  ];
-
   @override
   void paint(Canvas canvas, Size size) {
     // Clip to viewable area
@@ -661,12 +659,10 @@ class PianoRollPainter extends CustomPainter {
     canvas.drawLine(Offset(playheadXVal,-yOffset + 14 / yScale),Offset(playheadXVal,-yOffset + size.height / yScale - 14 / yScale),playhead);
 
     // draw notes on top of the grid
-    int voiceID = 0;
     for (final voice in project.voices) {
-      voiceID++;
+      var noteColor = voice.color;
       for (final note in voice.notes) {
         // print("Abs" + (event.absoluteTime).toString());
-        var noteColor = noteColors[voiceID % noteColors.length];
         if(selectedNotes.containsKey(note) && selectedNotes[note]) {
           final xBorderThickness = 5;
           final yBorderThickness = 5;

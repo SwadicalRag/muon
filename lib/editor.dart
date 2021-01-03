@@ -11,12 +11,32 @@ import 'package:muon/controllers/muonnote.dart';
 import 'package:muon/controllers/muonproject.dart';
 import 'package:muon/controllers/muonvoice.dart';
 import 'package:muon/logic/japanese.dart';
+import 'package:muon/logic/musicxml.dart';
 import 'package:muon/main.dart';
 import 'package:muon/pianoroll.dart';
 import 'package:muon/serializable/settings.dart';
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
+import 'package:path/path.dart' as p;
 
 final currentProject = MuonProjectController.defaultProject();
+
+List<String> getAllVoiceModels() {
+  final List<String> items = [];
+
+  final modelsDir = Directory(getRawProgramPath("model"));
+  final modelsDirFiles = modelsDir.listSync();
+
+  for(final modelsDirFile in modelsDirFiles) {
+    if(modelsDirFile is Directory) {
+      final modelName = p.relative(modelsDirFile.path,from: modelsDir.path);
+      items.add(modelName);
+    }
+  }
+
+  items.sort();
+
+  return items;
+}
 
 class MuonEditor extends StatefulWidget {
   MuonEditor() : super();
@@ -32,7 +52,7 @@ class _MuonEditorState extends State<MuonEditor> {
     if(currentProject.internalStatus.value != "idle") {return;}
 
     final playPos = Duration(
-      milliseconds: 2000 + 
+      milliseconds: currentProject.getLabelMillisecondOffset() + 
         (
           1000 * 
           (
@@ -41,32 +61,90 @@ class _MuonEditorState extends State<MuonEditor> {
           )
         ).floor()
       );
+
+    List<Future<void>> compileRes = [];
+    currentProject.internalStatus.value = "compiling";
     for(final voice in currentProject.voices) {
-      if(voice.audioPlayer != null) {
-        await voice.audioPlayer.unload();
-      }
-      
-      currentProject.internalStatus.value = "compiling";
-      await voice.makeLabels();
-      await voice.runNeutrino();
-      await voice.vocodeWORLD();
+      compileRes.add(_compileVoiceInternal(voice));
+    }
+    await Future.wait(compileRes);
+    currentProject.internalStatus.value = "idle";
 
-      final audioPlayer = await voice.getAudioPlayer(playPos);
+    List<Future<bool>> voiceRes = [];
+    for(final voice in currentProject.voices) {
+      voiceRes.add(_playVoiceInternal(voice,playPos, 1 / currentProject.voices.length));
+    }
 
-      await audioPlayer.setPosition(playPos);
-      final suc = await audioPlayer.play();
+    currentProject.internalPlayTime = DateTime.now().millisecondsSinceEpoch;
+    final voiceRes2 = await Future.wait(voiceRes);
 
-      if(suc) {
-        currentProject.internalStatus.value = "playing";
+    var errorShown = false;
+    for(final res in voiceRes2) {
+      if(!res) {
+        if(!errorShown) {
+          errorShown = true;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(backgroundColor: Theme.of(context).errorColor,
+              content: new Text('Unable to play audio!'),
+              duration: new Duration(seconds: 5),
+            )
+          );
+        }
       }
       else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(backgroundColor: Theme.of(context).errorColor,
-            content: new Text('Unable to play audio!'),
-            duration: new Duration(seconds: 5),
-          )
-        );
+        currentProject.internalStatus.value = "playing";
       }
+    }
+  }
+
+  Future<void> _compileVoiceInternal(MuonVoiceController voice) async {
+    if(voice.audioPlayer != null) {
+      await voice.audioPlayer.unload();
+    }
+    
+    await voice.makeLabels();
+    await voice.runNeutrino();
+    await voice.vocodeWORLD();
+  }
+
+  Future<void> _compileVoiceInternalNSF() async {
+    currentProject.internalStatus.value = "compiling_nsf";
+    int voiceID = 0;
+    for(final voice in currentProject.voices) {
+      voiceID++;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: new Text('Compiling voice ' + voiceID.toString() + " with NSF..."),
+          duration: new Duration(seconds: 2),
+        )
+      );
+      await voice.vocodeNSF();
+    }
+    currentProject.internalStatus.value = "idle";
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: new Text("NSF complete!"),
+        duration: new Duration(seconds: 2),
+      )
+    );
+  }
+
+  Future<bool> _playVoiceInternal(MuonVoiceController voice,Duration playPos,double volume) async {
+    if(voice.audioPlayer != null) {
+      await voice.audioPlayer.unload();
+    }
+
+    final audioPlayer = await voice.getAudioPlayer(playPos);
+
+    audioPlayer.setVolume(volume);
+    await audioPlayer.setPosition(playPos);
+    final suc = await audioPlayer.play();
+
+    if(suc) {
+      return true;
+    }
+    else {
+      return false;
     }
   }
 
@@ -74,13 +152,13 @@ class _MuonEditorState extends State<MuonEditor> {
     for(final voice in currentProject.voices) {
       if(voice.audioPlayer != null) {
         voice.audioPlayer.unload();
-        if(currentProject.internalStatus.value == "playing") {
-          currentProject.internalStatus.value = "idle";
-        }
-        else {
-          currentProject.playheadTime.value = 0;
-        }
       }
+    }
+    if(currentProject.internalStatus.value == "playing") {
+      currentProject.internalStatus.value = "idle";
+    }
+    else {
+      currentProject.playheadTime.value = 0;
     }
   }
 
@@ -88,20 +166,43 @@ class _MuonEditorState extends State<MuonEditor> {
   Widget build(BuildContext context) {
     final settings = getMuonSettings();
     
-    Timer.periodic(Duration(milliseconds: 1),(Timer t) async {
-      MuonVoiceController voice = currentProject.voices[0];
-
-      if(voice != null) {
+    Timer.periodic(Duration(milliseconds: 500),(Timer t) async {
+      if(currentProject.voices.length > currentProject.currentVoiceID.value) {
+        MuonVoiceController voice = currentProject.voices[currentProject.currentVoiceID.value];
         if(voice.audioPlayer != null) {
           if(currentProject.internalStatus.value == "playing") {
-            int curPos = (await voice.audioPlayer.getPosition()).inMilliseconds;
+            dynamic posDur = await voice.audioPlayer.getPosition();
+            if(posDur is Duration) {
+              int curPos = posDur.inMilliseconds;
+
+              if(curPos >= voice.audioPlayerDuration) {
+                currentProject.internalPlayTime = 0;
+                currentProject.playheadTime.value = 0;
+                currentProject.internalStatus.value = "idle";
+              }
+              else {
+                int voicePos = curPos - currentProject.getLabelMillisecondOffset();
+                currentProject.internalPlayTime = DateTime.now().millisecondsSinceEpoch - voicePos;
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    Timer.periodic(Duration(milliseconds: 1),(Timer t) async {
+      if(currentProject.voices.length > currentProject.currentVoiceID.value) {
+        MuonVoiceController voice = currentProject.voices[currentProject.currentVoiceID.value];
+        if(voice.audioPlayer != null) {
+          if(currentProject.internalStatus.value == "playing") {
+            int voicePos = DateTime.now().millisecondsSinceEpoch - currentProject.internalPlayTime;
+            int curPos = voicePos + currentProject.getLabelMillisecondOffset();
 
             if(curPos >= voice.audioPlayerDuration) {
               currentProject.playheadTime.value = 0;
               currentProject.internalStatus.value = "idle";
             }
             else {
-              int voicePos = curPos - 2000;
               currentProject.playheadTime.value = voicePos / 1000 * (currentProject.bpm / 60);
             }
           }
@@ -253,15 +354,15 @@ class _MuonEditorState extends State<MuonEditor> {
               }
             },
           ),
-          IconButton(
+          Obx(() => IconButton(
             icon: const Icon(Icons.computer),
+            color: currentProject.internalStatus.value == "compiling_nsf" ? 
+              Colors.yellow : Colors.white,
             tooltip: "Render with NSF",
             onPressed: () {
-              for(final voice in currentProject.voices) {
-                voice.vocodeNSF();
-              }
+              _compileVoiceInternalNSF();
             },
-          ),
+          )),
           SizedBox(width: 40,),
           Obx(() => IconButton(
               icon: darkMode.value ? const Icon(Icons.lightbulb) : const Icon(Icons.lightbulb_outline),
@@ -283,14 +384,54 @@ class _MuonEditorState extends State<MuonEditor> {
             icon: const Icon(Icons.folder),
             tooltip: "Load",
             onPressed: () {
-              
+              FileSelectorPlatform.instance.openFile(
+                confirmButtonText: "Open Project",
+                acceptedTypeGroups: [XTypeGroup(
+                  label: "Muon Project Files",
+                  extensions: ['json'],
+                )],
+              )
+              .then((value) {
+                if(value != null) {
+                  final proj = MuonProjectController.loadFromFile(value.path);
+                  currentProject.updateWith(proj);
+                }
+              })
+              .catchError((err) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: themeData.errorColor,
+                    content: new Text("internal error: " + err.toString()),
+                    duration: new Duration(seconds: 10),
+                  )
+                );
+              }); // oh wow i am so naughty
             },
           ),
           IconButton(
             icon: const Icon(Icons.create),
             tooltip: "New project",
             onPressed: () {
-              currentProject.updateWith(MuonProjectController.defaultProject());
+              FileSelectorPlatform.instance.getSavePath(
+                confirmButtonText: "Create Project",
+                acceptedTypeGroups: [XTypeGroup(
+                  label: "Muon Project Files",
+                  extensions: ['json'],
+                )],
+                suggestedName: "project",
+              )
+              .then((value) {
+                if(value != null) {
+                  currentProject.updateWith(MuonProjectController.defaultProject());
+                  currentProject.projectDir.value = p.dirname(value);
+                  currentProject.projectFileName.value = p.basename(value);
+                  if(!currentProject.projectFileName.value.endsWith(".json")) {
+                    currentProject.projectFileName.value += ".json";
+                  }
+                  currentProject.save();
+                }
+              })
+              .catchError((err) {print("internal error: " + err.toString());}); // oh wow i am so naughty
             },
           ),
           SizedBox(width: 20,),
@@ -309,7 +450,7 @@ class _MuonEditorState extends State<MuonEditor> {
         textDirection: TextDirection.rtl,
         children: [
           Expanded(
-            child: Obx(() => PianoRoll(
+            child: PianoRoll(
               currentProject,
               currentProject.selectedNotes,
               (pianoRoll,mouseEvent) {
@@ -409,7 +550,7 @@ class _MuonEditorState extends State<MuonEditor> {
                               }
 
                               // dumb hack to force repaint
-                              pianoRoll.state.setState(() {});
+                              pianoRoll.state.repaint();
                             },
                           ),
                         ),
@@ -418,13 +559,16 @@ class _MuonEditorState extends State<MuonEditor> {
                     );
                   }
                   else {
-                    var note = MuonNoteController();
-                    var pitch = pianoRoll.painter.getPitchAtCursor(mousePos.y);
-                    note.octave.value = pitch.octave;
-                    note.note.value = pitch.note;
-                    note.startAtTime.value = (pianoRoll.painter.getBeatNumAtCursor(mousePos.x) * currentProject.timeUnitsPerBeat.value).floor();
-                    note.duration.value = 1;
-                    currentProject.voices[0].addNote(note);
+                    if(currentProject.voices.length > currentProject.currentVoiceID.value) {
+                      MuonVoiceController voice = currentProject.voices[currentProject.currentVoiceID.value];
+                      var note = MuonNoteController();
+                      var pitch = pianoRoll.painter.getPitchAtCursor(mousePos.y);
+                      note.octave.value = pitch.octave;
+                      note.note.value = pitch.note;
+                      note.startAtTime.value = (pianoRoll.painter.getBeatNumAtCursor(mousePos.x) * currentProject.timeUnitsPerBeat.value).floor();
+                      note.duration.value = 1;
+                      voice.addNote(note);
+                    }
                   }
                 }
               },
@@ -508,17 +652,19 @@ class _MuonEditorState extends State<MuonEditor> {
                     }
 
                     // dumb hack to force repaint
-                    pianoRoll.state.setState(() {});
+                    pianoRoll.state.repaint();
                   }
                   else if(keyEvent.isKeyPressed(LogicalKeyboardKey.keyC) || keyEvent.isKeyPressed(LogicalKeyboardKey.keyX)) {
                     // copy / cut
 
                     bool cut = keyEvent.isKeyPressed(LogicalKeyboardKey.keyX);
                     currentProject.copiedNotes.clear();
+                    currentProject.copiedNotesVoices.clear();
 
                     int earliestTime = 2147483647; // assuming int32, I cannot be bothered verifying this
                     for(final selectedNote in currentProject.selectedNotes.keys) {
                       if(currentProject.selectedNotes[selectedNote]) {
+                        currentProject.copiedNotesVoices.add(selectedNote.voice);
                         currentProject.copiedNotes.add(selectedNote.toSerializable());
                         earliestTime = min(earliestTime,selectedNote.startAtTime.value);
 
@@ -533,22 +679,37 @@ class _MuonEditorState extends State<MuonEditor> {
                     }
 
                     // dumb hack to force repaint
-                    pianoRoll.state.setState(() {});
+                    pianoRoll.state.repaint();
                   }
                   else if(keyEvent.isKeyPressed(LogicalKeyboardKey.keyV)) {
                     // paste
 
-                    final currentVoice = currentProject.voices[0];
-                    if(currentVoice != null) {
-                      for(final note in currentProject.copiedNotes) {
-                        final cNote = MuonNoteController.fromSerializable(note);
-                        cNote.startAtTime.value = cNote.startAtTime.value + (currentProject.playheadTime.value * currentProject.timeUnitsPerBeat.value).floor();
-                        currentVoice.addNote(cNote);
+                    for(int idx = 0;idx < currentProject.copiedNotes.length;idx++) {
+                      final note = currentProject.copiedNotes[idx];
+                      final voice = currentProject.copiedNotesVoices[idx];
+                      final cNote = MuonNoteController.fromSerializable(note);
+                      cNote.startAtTime.value = cNote.startAtTime.value + (currentProject.playheadTime.value * currentProject.timeUnitsPerBeat.value).floor();
+                      if(keyEvent.isShiftPressed) {
+                        if(currentProject.currentVoiceID.value < currentProject.voices.length) {
+                          currentProject.voices[currentProject.currentVoiceID.value].addNote(cNote);
+                        }
+                      }
+                      else {
+                        voice.addNote(cNote);
                       }
                     }
 
                     // dumb hack to force repaint
-                    pianoRoll.state.setState(() {});
+                    pianoRoll.state.repaint();
+                  }
+                  else if(keyEvent.isKeyPressed(LogicalKeyboardKey.keyS)) {
+                    currentProject.save();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: new Text('Saved project!'),
+                        duration: new Duration(seconds: 2),
+                      )
+                    );
                   }
                 }
 
@@ -560,7 +721,7 @@ class _MuonEditorState extends State<MuonEditor> {
                   }
 
                   // dumb hack to force repaint
-                  pianoRoll.state.setState(() {});
+                  pianoRoll.state.repaint();
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowUp)) {
                   int moveBy = keyEvent.isShiftPressed ? 12 : 1;
@@ -572,7 +733,7 @@ class _MuonEditorState extends State<MuonEditor> {
                   }
 
                   // dumb hack to force repaint
-                  pianoRoll.state.setState(() {});
+                  pianoRoll.state.repaint();
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowDown)) {
                   int moveBy = keyEvent.isShiftPressed ? -12 : -1;
@@ -584,7 +745,7 @@ class _MuonEditorState extends State<MuonEditor> {
                   }
 
                   // dumb hack to force repaint
-                  pianoRoll.state.setState(() {});
+                  pianoRoll.state.repaint();
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowRight)) {
                   int moveBy = keyEvent.isShiftPressed ? currentProject.timeUnitsPerBeat.value : 1;
@@ -596,7 +757,7 @@ class _MuonEditorState extends State<MuonEditor> {
                   }
 
                   // dumb hack to force repaint
-                  pianoRoll.state.setState(() {});
+                  pianoRoll.state.repaint();
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowLeft)) {
                   int moveBy = keyEvent.isShiftPressed ? -currentProject.timeUnitsPerBeat.value : -1;
@@ -608,7 +769,7 @@ class _MuonEditorState extends State<MuonEditor> {
                   }
 
                   // dumb hack to force repaint
-                  pianoRoll.state.setState(() {});
+                  pianoRoll.state.repaint();
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.space)) {
                   if(currentProject.internalStatus.value == "playing") {
@@ -619,9 +780,218 @@ class _MuonEditorState extends State<MuonEditor> {
                   }
                 }
               },
-            ))
+            )
           ),
           Container(
+            child: Column(
+              mainAxisSize: MainAxisSize.max,
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Container(
+
+                  )
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  height: 230,
+                  child: Container(
+                    child: Column(
+                      verticalDirection: VerticalDirection.up,
+                      children: [
+                        Expanded(
+                          child: Scrollbar(
+                            child: Obx(() => ListView.builder(
+                              itemCount: currentProject.voices.length,
+                              itemBuilder: (context, index) {
+                                final voice = currentProject.voices[index];
+                                return Container(
+                                  height: 40,
+                                  margin: EdgeInsets.symmetric(horizontal: 5,vertical: 5),
+                                  padding: EdgeInsets.only(left: 15),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        margin: EdgeInsets.only(right: 10),
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          color: voice.color,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.white.withOpacity(0.7),
+                                              blurRadius: 2,
+                                              spreadRadius: 2,
+                                            ),
+                                          ]
+                                        ),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Obx(() => Text(
+                                          "Voice " + (currentProject.voices.indexOf(voice) + 1).toString() + " (" + voice.modelName.value + ")",
+                                        ))
+                                      ),
+                                      Expanded(
+                                        child: Container(),
+                                      ),
+                                      Obx(() => IconButton(
+                                        icon: const Icon(Icons.center_focus_strong),
+                                        disabledColor: Colors.green.withOpacity(0.9),
+                                        tooltip: "Select voice",
+                                        onPressed: currentProject.currentVoiceID.value == currentProject.voices.indexOf(voice) ? null : () {
+                                          currentProject.currentVoiceID.value = currentProject.voices.indexOf(voice);
+                                        },
+                                      )),
+                                      PopupMenuButton(
+                                        icon: const Icon(Icons.speaker_notes),
+                                        tooltip: "Change voice model",
+                                        onSelected: (String result) {
+                                          voice.modelName.value = result;
+                                        },
+                                        itemBuilder: (BuildContext context) {
+                                          final List<PopupMenuItem<String>> items = [];
+
+                                          final models = getAllVoiceModels();
+
+                                          for(final modelName in models) {
+                                            items.add(
+                                              PopupMenuItem(
+                                                value: modelName,
+                                                child: Text(modelName),
+                                              ),
+                                            );
+                                          }
+
+                                          return items;
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete),
+                                        tooltip: "Delete voice",
+                                        onPressed: () {
+                                          currentProject.voices.remove(voice);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: themeData.buttonColor,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.5),
+                                        blurRadius: 1,
+                                        spreadRadius: 1,
+                                      ),
+                                    ]
+                                  ),
+                                );
+                              },
+                            )),
+                          ),
+                        ),
+                        Container(
+                          padding: EdgeInsets.symmetric(vertical: 5),
+                          child: Stack(
+                            children: [
+                              Align(
+                                alignment: Alignment.center,
+                                child: Text("Voices",style: TextStyle(fontSize: 26),)
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Transform.translate(
+                                  offset: Offset(-5,0),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.add),
+                                    tooltip: "Add voice",
+                                    onPressed: () {
+                                      final newVoice = MuonVoiceController();
+                                      newVoice.project = currentProject;
+                                      currentProject.voices.add(newVoice);
+                                    },
+                                  ),
+                                ),
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Transform.translate(
+                                  offset: Offset(-35,0),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.code),
+                                    tooltip: "Import voice from MusicXML",
+                                    onPressed: () {
+                                      Timer(Duration(milliseconds: 50),() {
+                                        FileSelectorPlatform.instance.openFile(
+                                          confirmButtonText: "Open MusicXML File",
+                                        )
+                                        .catchError((err) {print("internal file browser error: " + err.toString());}) // oh wow i am so naughty
+                                        .then((value) {
+                                          if(value != null) {
+                                            MusicXML musicXML = parseFile(value.path);
+                                            currentProject.importVoiceFromMusicXML(musicXML, true);
+                                          }
+                                        });
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Transform.translate(
+                                  offset: Offset(-65,0),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.queue_music),
+                                    tooltip: "Import voice from MIDI",
+                                    onPressed: () {
+                                      Timer(Duration(milliseconds: 50),() {
+                                        FileSelectorPlatform.instance.openFile(
+                                          confirmButtonText: "Open MIDI File",
+                                        )
+                                        .catchError((err) {print("internal file browser error: " + err.toString());}) // oh wow i am so naughty
+                                        .then((value) {
+                                          if(value != null) {
+                                            currentProject.importVoiceFromMIDIFile(value.path, true);
+                                          }
+                                        });
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          decoration: BoxDecoration(
+                            color: themeData.scaffoldBackgroundColor,
+                            boxShadow: [
+                              BoxShadow(
+                                offset: Offset(0,5),
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 3,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          ),
+                        ),
+                      ],
+                    ),
+                    decoration: BoxDecoration(
+                      color: themeData.scaffoldBackgroundColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.5),
+                          blurRadius: 1,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    ),
+                  ),
+                ),
+              ],
+            ),
             width: 400,
             decoration: BoxDecoration(
               color: themeData.scaffoldBackgroundColor,

@@ -9,6 +9,8 @@ import 'package:path/path.dart' as p;
 
 class MuonProjectController extends GetxController {
   final projectDir = "".obs;
+  final projectFileName = "project.json".obs;
+  String get projectFileNameNoExt => p.basenameWithoutExtension(projectFileName.value);
 
   // tempo
   final bpm = 120.0.obs;
@@ -21,10 +23,13 @@ class MuonProjectController extends GetxController {
   final voices = RxList<MuonVoiceController>([]);
 
   // other
+  final currentVoiceID = 0.obs;
   final selectedNotes = Map<MuonNoteController,bool>().obs;
   final playheadTime = 0.0.obs;
   List<MuonNote> copiedNotes = [];
+  List<MuonVoiceController> copiedNotesVoices = [];
   final internalStatus = "idle".obs;
+  int internalPlayTime = 0;
   
   // subdivision manager
   final currentSubdivision = 1.obs;
@@ -42,6 +47,10 @@ class MuonProjectController extends GetxController {
     factorTimeUnitsPerBeat();
     setTimeUnitsPerBeat(timeUnitsPerBeat.value * subdivision);
     currentSubdivision.value = subdivision;
+  }
+
+  int getLabelMillisecondOffset() {
+    return (this.beatsPerMeasure / (this.bpm.value / 60) * 1000).round();
   }
 
   void updateWith(MuonProjectController controller) {
@@ -67,7 +76,6 @@ class MuonProjectController extends GetxController {
     out.projectDir.value = "startup";
 
     final baseVoice = MuonVoiceController();
-    baseVoice.modelName.value = "KIRITAN";
     baseVoice.addNote(
       MuonNoteController()
         ..startAtTime.value = 0
@@ -163,7 +171,6 @@ class MuonProjectController extends GetxController {
 
       if(midi.header.format == 0) {
         var voice = MuonVoiceController()..project = this;
-        voice.modelName.value = "KIRITAN";
 
         int timeUnitMulFactor = 1;
         if(this.timeUnitsPerBeat.value != midi.header.ticksPerBeat) {
@@ -255,7 +262,6 @@ class MuonProjectController extends GetxController {
 
   void importVoiceFromMusicXML(MusicXML musicXML,bool importTimeMetadata) {
     var voice = MuonVoiceController()..project = this;
-    voice.modelName.value = "KIRITAN";
 
     int timeUnitMulFactor = 1;
     for(final event in musicXML.events) {
@@ -312,6 +318,7 @@ class MuonProjectController extends GetxController {
 
     voice.sortNotesByTime();
 
+    musicXML.rest((this.beatsPerMeasure.value * divEvent.divisions).toDouble(),1);
     var lastNoteEndTime = 0;
     for(final note in voice.notes) {
       if(note.startAtTime > lastNoteEndTime) {
@@ -333,6 +340,7 @@ class MuonProjectController extends GetxController {
 
       lastNoteEndTime = note.startAtTime.value + note.duration.value;
     }
+    musicXML.rest((this.beatsPerMeasure.value * divEvent.divisions).toDouble(),1);
 
     return musicXML;
   }
@@ -342,14 +350,20 @@ class MuonProjectController extends GetxController {
     serializable.save();
   }
 
-  static MuonProjectController loadFromDir(String projectDir) {
-    final serializable = MuonProject.loadFromDir(projectDir);
+  static MuonProjectController loadFromDir(String projectDir,String projectFileName) {
+    final serializable = MuonProject.loadFromDir(projectDir,projectFileName);
+    return MuonProjectController.fromSerializable(serializable);
+  }
+
+  static MuonProjectController loadFromFile(String projectFile) {
+    final serializable = MuonProject.loadFromFile(projectFile);
     return MuonProjectController.fromSerializable(serializable);
   }
 
   MuonProject toSerializable() {
     final out = MuonProject();
     out.projectDir = this.projectDir.value;
+    out.projectFileName = this.projectFileName.value;
     out.bpm = this.bpm.value;
     out.timeUnitsPerBeat = this.timeUnitsPerBeat.value;
     out.beatsPerMeasure = this.beatsPerMeasure.value;
@@ -363,6 +377,7 @@ class MuonProjectController extends GetxController {
   static MuonProjectController fromSerializable(MuonProject obj) {
     final out = MuonProjectController();
     out.projectDir.value = obj.projectDir;
+    out.projectFileName.value = obj.projectFileName;
     out.bpm.value = obj.bpm;
     out.timeUnitsPerBeat.value = obj.timeUnitsPerBeat;
     out.beatsPerMeasure.value = obj.beatsPerMeasure;
@@ -385,7 +400,7 @@ void testProject() {
 
   originalProject.save();
 
-  final loadedProject = MuonProjectController.loadFromDir("testproject");
+  final loadedProject = MuonProjectController.loadFromDir("testproject","project.json");
   final voiceMusicXML = loadedProject.voices[0].exportVoiceToMusicXML();
 
   final serializedMusicXML = serializeMusicXML(voiceMusicXML);

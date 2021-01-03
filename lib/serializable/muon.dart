@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:json_annotation/json_annotation.dart';
+import 'package:muon/controllers/muonproject.dart';
+import 'package:path/path.dart' as p;
 
 part 'muon.g.dart';
 
@@ -50,6 +52,10 @@ class MuonProject {
   @JsonKey(ignore: true)
   String projectDir;
 
+  // project metadata
+  @JsonKey(ignore: true)
+  String projectFileName;
+
   // tempo
   double bpm = 120;
   int timeUnitsPerBeat = 1;
@@ -63,9 +69,9 @@ class MuonProject {
   factory MuonProject.fromJson(Map<String, dynamic> json) => _$MuonProjectFromJson(json);
   Map<String, dynamic> toJson() => _$MuonProjectToJson(this);
 
-  static MuonProject loadFromDir(String projectDir) {
-    if(Directory(projectDir).existsSync()) {
-      final file = new File(projectDir + "/project.json");
+  static MuonProject loadFromFile(String projectFile) {
+    if(File(projectFile).existsSync()) {
+      final file = new File(projectFile);
 
       if(file.existsSync()) {
         var fileContents = file.readAsStringSync();
@@ -77,10 +83,19 @@ class MuonProject {
           voice.project = project;
         }
 
-        project.projectDir = projectDir;
+        project.projectDir = p.dirname(projectFile);
+        project.projectFileName = p.basename(projectFile);
 
         return project;
       }
+    }
+
+    return null;
+  }
+
+  static MuonProject loadFromDir(String projectDir,String projectFileName) {
+    if(Directory(projectDir).existsSync()) {
+      return MuonProject.loadFromFile(projectDir + "/" + projectFileName);
     }
 
     return null;
@@ -94,7 +109,7 @@ class MuonProject {
     final jsonContents = this.toJson();
     String fileContents = jsonEncode(jsonContents);
 
-    final file = new File(projectDir + "/project.json");
+    final file = new File(projectDir + "/" + projectFileName);
     file.writeAsStringSync(fileContents);
   }
 }
