@@ -219,7 +219,7 @@ class _MuonEditorState extends State<MuonEditor> {
         showDialog<void>(
           context: context,
           barrierDismissible: false, // user must tap button!
-          builder: (BuildContext context) {
+          builder: (BuildContext subContext) {
             return Scaffold(
               body: AlertDialog(
                 title: Text("Hello and welcome!"),
@@ -248,9 +248,9 @@ class _MuonEditorState extends State<MuonEditor> {
                               settings.neutrinoDir = "";
                               settings.save();
 
-                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(backgroundColor: Theme.of(context).errorColor,
+                              ScaffoldMessenger.of(subContext).hideCurrentSnackBar();
+                              ScaffoldMessenger.of(subContext).showSnackBar(
+                                SnackBar(backgroundColor: Theme.of(subContext).errorColor,
                                   content: new Text("Error: That doesn't seem like a valid NEUTRINO directory!"),
                                   duration: new Duration(seconds: 5),
                                 )
@@ -276,16 +276,17 @@ class _MuonEditorState extends State<MuonEditor> {
                     child: Text("I'm all set!"),
                     onPressed: () {
                       if(settings.neutrinoDir == "") {
-                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(backgroundColor: Theme.of(context).errorColor,
+                        ScaffoldMessenger.of(subContext).hideCurrentSnackBar();
+                        ScaffoldMessenger.of(subContext).showSnackBar(
+                          SnackBar(backgroundColor: Theme.of(subContext).errorColor,
                             content: new Text('Error: Please choose a valid directory for the NEUTRINO library!'),
                             duration: new Duration(seconds: 5),
                           )
                         );
                       }
                       else {
-                        Navigator.of(context).pop();
+                        currentProject.updateWith(MuonProjectController.defaultProject());
+                        Navigator.of(subContext, rootNavigator: true).pop();
                       }
                     },
                   ),

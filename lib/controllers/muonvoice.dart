@@ -25,6 +25,7 @@ String getProgramPath(String programName) {
 }
 
 List<String> getAllVoiceModels() {
+  if(getMuonSettings().neutrinoDir == "") {return [];}
   final List<String> items = [];
 
   final modelsDir = Directory(getRawProgramPath("model"));
