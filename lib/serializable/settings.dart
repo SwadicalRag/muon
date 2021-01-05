@@ -1,9 +1,9 @@
-import 'dart:convert';
-import 'dart:io';
+import "dart:convert";
+import "dart:io";
 
-import 'package:json_annotation/json_annotation.dart';
+import "package:json_annotation/json_annotation.dart";
 
-part 'settings.g.dart';
+part "settings.g.dart";
 
 @JsonSerializable(nullable: false)
 class MuonSettings {

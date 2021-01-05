@@ -1,4 +1,4 @@
-import 'package:kana_kit/kana_kit.dart';
+import "package:kana_kit/kana_kit.dart";
 
 const kanaKit = KanaKit();
 

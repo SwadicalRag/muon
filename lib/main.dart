@@ -1,12 +1,12 @@
-import 'dart:io';
-import 'package:get/get.dart';
+import "dart:io";
+import "package:get/get.dart";
 
-import 'package:flutter/material.dart';
-import 'package:muon/licenses.dart';
-import 'package:muon/editor.dart';
-import 'package:muon/serializable/settings.dart';
+import "package:flutter/material.dart";
+import "package:muon/licenses.dart";
+import "package:muon/editor.dart";
+import "package:muon/serializable/settings.dart";
 
-import 'package:window_size/window_size.dart';
+import "package:window_size/window_size.dart";
 
 final darkMode = getMuonSettings().darkMode.obs..listen((bool newVal) {
   final settings = getMuonSettings();
@@ -33,7 +33,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(() => MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Muon',
+      title: "Muon",
       themeMode: darkMode.value ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
         primarySwatch: Colors.purple,

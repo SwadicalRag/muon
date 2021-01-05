@@ -1,11 +1,11 @@
-import 'dart:convert';
-import 'dart:io';
+import "dart:convert";
+import "dart:io";
 
-import 'package:json_annotation/json_annotation.dart';
-import 'package:muon/controllers/muonproject.dart';
-import 'package:path/path.dart' as p;
+import "package:json_annotation/json_annotation.dart";
+import "package:muon/controllers/muonproject.dart";
+import "package:path/path.dart" as p;
 
-part 'muon.g.dart';
+part "muon.g.dart";
 
 @JsonSerializable(nullable: false)
 class MuonNote {

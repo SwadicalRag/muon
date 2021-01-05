@@ -1,8 +1,8 @@
-import 'dart:io';
-import 'dart:math';
+import "dart:io";
+import "dart:math";
 
-import 'package:universal_html/html.dart' as html show Node,Element;
-import 'package:universal_html/parsing.dart' as html show parseXmlDocument;
+import "package:universal_html/html.dart" as html show Node,Element;
+import "package:universal_html/parsing.dart" as html show parseXmlDocument;
 
 class MusicXMLEvent {
   double absoluteTime;
@@ -561,9 +561,9 @@ String serializeMusicXML(MusicXML musicXML) {
     append(" />");
   }
 
-  append('<?xml version="1.0" encoding="utf-8"?>');
+  append("""<?xml version="1.0" encoding="utf-8"?>""");
   newline();
-  append('<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd"[]>');
+  append("""<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd"[]>""");
   newline();
 
   int curMeasureNum = 1;

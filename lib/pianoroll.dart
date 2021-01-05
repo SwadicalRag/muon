@@ -1,16 +1,16 @@
-import 'dart:async';
-import 'dart:ui';
+import "dart:async";
+import "dart:ui";
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
-import 'package:muon/controllers/muonnote.dart';
-import 'dart:math';
+import "package:flutter/foundation.dart";
+import "package:flutter/gestures.dart";
+import "package:flutter/material.dart";
+import "package:flutter/rendering.dart";
+import "package:flutter/services.dart";
+import "package:muon/controllers/muonnote.dart";
+import "dart:math";
 
-import 'package:muon/controllers/muonproject.dart';
-import 'package:muon/serializable/muon.dart';
+import "package:muon/controllers/muonproject.dart";
+import "package:muon/serializable/muon.dart";
 
 class PianoRollPitch {
   String note;
@@ -412,18 +412,18 @@ class PianoRollPainter extends CustomPainter {
   }
 
   static Map<String, int> pitchMap = {
-    'C': 11,
-    'C#': 10,
-    'D': 9,
-    'D#': 8,
-    'E': 7,
-    'F': 6,
-    'F#': 5,
-    'G': 4,
-    'G#': 3,
-    'A': 2,
-    'A#': 1,
-    'B': 0,
+    "C": 11,
+    "C#": 10,
+    "D": 9,
+    "D#": 8,
+    "E": 7,
+    "F": 6,
+    "F#": 5,
+    "G": 4,
+    "G#": 3,
+    "A": 2,
+    "A#": 1,
+    "B": 0,
   };
   static Map<int, String> pitchMapReverse =
       pitchMap.map((key, value) => new MapEntry(value, key));

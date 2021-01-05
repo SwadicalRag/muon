@@ -1,15 +1,15 @@
-import 'package:flutter/foundation.dart';
+import "package:flutter/foundation.dart";
 
 void addLicenses() {
     LicenseRegistry.addLicense(() async* {
 	
-      yield LicenseEntryWithLineBreaks(['NEUTRINO'], '''
+      yield LicenseEntryWithLineBreaks(["NEUTRINO"], """
 製作者  : SHACHI
 Mail    : neutrino@n3utrino.work
 Twitter : https://twitter.com/SHACHI_NEUTRINO
-HP      : https://n3utrino.work'''.replaceAll(new RegExp("\n"),"\n\n"));
+HP      : https://n3utrino.work""".replaceAll(new RegExp("\n"),"\n\n"));
 	
-      yield LicenseEntryWithLineBreaks(['Sinsy'], '''
+      yield LicenseEntryWithLineBreaks(["Sinsy"], """
 /* ----------------------------------------------------------------- */
 /*           The HMM-Based Singing Voice Synthesis System "Sinsy"    */
 /*           developed by Sinsy Working Group                        */
@@ -49,9 +49,9 @@ HP      : https://n3utrino.work'''.replaceAll(new RegExp("\n"),"\n\n"));
 /* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY    */
 /* OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE           */
 /* POSSIBILITY OF SUCH DAMAGE.                                       */
-/* ----------------------------------------------------------------- */'''.replaceAll(new RegExp("\n"),"\n\n"));
+/* ----------------------------------------------------------------- */""".replaceAll(new RegExp("\n"),"\n\n"));
 
-      yield LicenseEntryWithLineBreaks(['WORLD'], '''
+      yield LicenseEntryWithLineBreaks(["WORLD"], """
 /* ----------------------------------------------------------------- */
 /*           WORLD: High-quality speech analysis,                    */
 /*           manipulation and synthesis system                       */
@@ -90,7 +90,7 @@ HP      : https://n3utrino.work'''.replaceAll(new RegExp("\n"),"\n\n"));
 /* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY    */
 /* OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE           */
 /* POSSIBILITY OF SUCH DAMAGE.                                       */
-/* ----------------------------------------------------------------- */'''.replaceAll(new RegExp("\n"),"\n\n"));
+/* ----------------------------------------------------------------- */""".replaceAll(new RegExp("\n"),"\n\n"));
 	
     });
 }

@@ -1,6 +1,6 @@
-import 'package:get/get.dart';
-import 'package:muon/controllers/muonvoice.dart';
-import 'package:muon/serializable/muon.dart';
+import "package:get/get.dart";
+import "package:muon/controllers/muonvoice.dart";
+import "package:muon/serializable/muon.dart";
 
 class MuonNoteController extends GetxController {
   MuonVoiceController voice;

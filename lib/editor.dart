@@ -1,22 +1,22 @@
 
-import 'dart:async';
-import 'dart:io';
-import 'dart:math';
+import "dart:async";
+import "dart:io";
+import "dart:math";
 
-import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
-import 'package:get/get.dart';
-import 'package:muon/controllers/muonnote.dart';
-import 'package:muon/controllers/muonproject.dart';
-import 'package:muon/controllers/muonvoice.dart';
-import 'package:muon/logic/japanese.dart';
-import 'package:muon/logic/musicxml.dart';
-import 'package:muon/main.dart';
-import 'package:muon/pianoroll.dart';
-import 'package:muon/serializable/settings.dart';
-import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
-import 'package:path/path.dart' as p;
+import "package:flutter/material.dart";
+import "package:flutter/rendering.dart";
+import "package:flutter/services.dart";
+import "package:get/get.dart";
+import "package:muon/controllers/muonnote.dart";
+import "package:muon/controllers/muonproject.dart";
+import "package:muon/controllers/muonvoice.dart";
+import "package:muon/logic/japanese.dart";
+import "package:muon/logic/musicxml.dart";
+import "package:muon/main.dart";
+import "package:muon/pianoroll.dart";
+import "package:muon/serializable/settings.dart";
+import "package:file_selector_platform_interface/file_selector_platform_interface.dart";
+import "package:path/path.dart" as p;
 
 final currentProject = MuonProjectController.defaultProject();
 
@@ -109,7 +109,7 @@ class _MuonEditorState extends State<MuonEditor> {
       confirmButtonText: "Open Project",
       acceptedTypeGroups: [XTypeGroup(
         label: "Muon Project Files",
-        extensions: ['json'],
+        extensions: ["json"],
       )],
     )
     .then((value) {
@@ -134,7 +134,7 @@ class _MuonEditorState extends State<MuonEditor> {
       confirmButtonText: "Create Project",
       acceptedTypeGroups: [XTypeGroup(
         label: "Muon Project Files",
-        extensions: ['json'],
+        extensions: ["json"],
       )],
       suggestedName: "project",
     )
@@ -189,7 +189,7 @@ class _MuonEditorState extends State<MuonEditor> {
           errorShown = true;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(backgroundColor: Theme.of(context).errorColor,
-              content: new Text('Unable to play audio!'),
+              content: new Text("Unable to play audio!"),
               duration: new Duration(seconds: 5),
             )
           );
@@ -218,7 +218,7 @@ class _MuonEditorState extends State<MuonEditor> {
       voiceID++;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: new Text('Compiling voice ' + voiceID.toString() + " with NSF..."),
+          content: new Text("Compiling voice " + voiceID.toString() + " with NSF..."),
           duration: new Duration(seconds: 2),
         )
       );
@@ -383,7 +383,7 @@ class _MuonEditorState extends State<MuonEditor> {
                         ScaffoldMessenger.of(subContext).hideCurrentSnackBar();
                         ScaffoldMessenger.of(subContext).showSnackBar(
                           SnackBar(backgroundColor: Theme.of(subContext).errorColor,
-                            content: new Text('Error: Please choose a valid directory for the NEUTRINO library!'),
+                            content: new Text("Error: Please choose a valid directory for the NEUTRINO library!"),
                             duration: new Duration(seconds: 5),
                           )
                         );
@@ -590,7 +590,7 @@ class _MuonEditorState extends State<MuonEditor> {
                             controller: textController,
                             decoration: InputDecoration(
                               border: OutlineInputBorder(),
-                              labelText: 'Lyrics',
+                              labelText: "Lyrics",
                             ),
                             autofocus: true,
                             
@@ -777,7 +777,7 @@ class _MuonEditorState extends State<MuonEditor> {
                     currentProject.save();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: new Text('Saved project!'),
+                        content: new Text("Saved project!"),
                         duration: new Duration(seconds: 2),
                       )
                     );
