@@ -5,14 +5,26 @@ import "package:universal_html/html.dart" as html show Node,Element;
 import "package:universal_html/parsing.dart" as html show parseXmlDocument;
 
 class MusicXMLEvent {
+  /// The time offset of this event, measured in beats (i.e. how much
+  ///  time needs to pass before this event is triggered)
   double absoluteTime;
+  
+  /// The time offset of this event, measured in divisions (i.e. how much
+  ///  time needs to pass before this event is triggered)
+  /// 
+  /// NB: `x` beats `= x * divisionsPerBeat` divisions
+  /// 
   double time;
+  
+  /// The duration of this event, measured in divisions
   double duration = 0;
   
   MusicXMLEventTempo lastTempo;
   MusicXMLEventTimeSignature lastTimeSignature;
   MusicXMLEventDivision lastDivision;
 
+  /// This constructor internally populates
+  /// [lastTempo], [lastTimeSignature] and [lastDivision]
   MusicXMLEvent(MusicXML parent) {
     if(this is MusicXMLEventTempo) {
       lastTempo = this;
@@ -36,6 +48,7 @@ class MusicXMLEvent {
     }
   }
 
+  /// The duration of this event, measured in beats
   double get absoluteDuration {
     int divisions = 1;
 
@@ -49,18 +62,30 @@ class MusicXMLEvent {
 
 class MusicXMLEventDivision extends MusicXMLEvent {
   MusicXMLEventDivision(MusicXML parent) : super(parent);
+
+  /// Number of divisions per beat
+  /// Should never be zero
   int divisions;
 }
 
 
 class MusicXMLEventTempo extends MusicXMLEvent {
   MusicXMLEventTempo(MusicXML parent) : super(parent);
+
+  /// Beats per minute
   double tempo;
 }
 
 class MusicXMLEventTimeSignature extends MusicXMLEvent {
   MusicXMLEventTimeSignature(MusicXML parent) : super(parent);
+
+  /// Beats per measure (numerator in a time signature)
   int beats;
+
+  /// Quantity of each beat (denominator in a time signature)
+  /// 
+  /// Example values are powers of 2
+  /// `2`, `4`, `8`, `16`, ...
   int beatType;
 }
 
@@ -68,6 +93,8 @@ class MusicXMLPitch {
   int octave;
   String note;
 
+  /// returns true if both pitches are on the same
+  /// octave and have the same note value
   bool isEqualTo(MusicXMLPitch other) {
     if(other.octave == octave) {
       if(other.note == note) {
@@ -82,6 +109,8 @@ class MusicXMLPitch {
 class MusicXMLEventVoiced extends MusicXMLEvent {
   MusicXMLEventVoiced(MusicXML parent) : super(parent);
 
+  /// The MusicXML voice of this event
+  /// Doesn't have any special use case in Muon
   int voice;
 }
 
@@ -95,25 +124,64 @@ class MusicXMLEventNote extends MusicXMLEventVoiced {
 
   MusicXMLPitch pitch;
 
+  /// Used internally to merge multiple notes
   bool compoundNote = false;
+
+  /// Used internally to merge multiple notes
   bool compoundNoteResolved = false;
 }
 
+/// Used internally to convert divisions to note types
 class _NoteResolution {
   String noteType;
   int dots;
   double beats;
 }
 
+/// 
+/// The MusicXML class is an approximation of all of the data contained inside
+/// a MusicXML file. It does not completely follow the Music XML spec!
+/// My primary aim was to get an implementation of MusicXML that Neutrino accepts
+/// and making an official spec compatible MusicXML parser and serializer is not
+/// this project's goal.
+/// 
+/// That being said, the logic below does generalise well to most common MusicXML
+/// files, and is robust enough to at least parse MusicXML, and serialize data
+/// to a format that Neutrino almost always accepts.
+/// 
+/// NB: When serializing very complicated time intervals, the below logic does not
+/// generate tuplets/etc. and will just fall back to not annotating notes appropriately.
+/// Since Neutrino does not care about having proper annotations and tuplets, this is
+/// therefore not implemented properly on purpose. The goal of this project is to speak
+/// with Neutrino, and not to speak with something like Musescore.
+/// 
 class MusicXML {
+  /// The list of all events (notes/rests/time data) contained in the MusicXML
   List<MusicXMLEvent> events = [];
+
+  /// The total duration of all the events contained in this file, measured in divisions
+  /// 
+  /// NB: `x` beats `= x * divisionsPerBeat` divisions
+  /// 
   double duration = 0.0;
+
+  /// The total duration of all the events contained in this file, measured in beats
   double absoluteDuration = 0.0;
+
   MusicXMLEventTempo lastTempo;
   MusicXMLEventTimeSignature lastTimeSignature;
   MusicXMLEventDivision lastDivision;
   MusicXMLEventNote lastNote;
 
+  /// 
+  /// Adds a MusicXMLEvent to the list of events stored in this MusicXML class
+  /// 
+  /// Additionally also updates the [duration] and [absoluteDuration] fields of
+  /// both the input `MusicXMLEvent` and this class
+  /// 
+  /// This will also keep track of the last Tempo/Time Signature/Division/Note
+  /// events.
+  /// 
   void addEvent(MusicXMLEvent event) {
     event.time = duration;
     event.absoluteTime = absoluteDuration;
@@ -137,6 +205,8 @@ class MusicXML {
     events.add(event);
   }
 
+  /// Converts note duration (measured in divisions) to absolute
+  /// duration (measured in beats)
   double noteDurationToAbsoluteTime(double noteDuration) {
     int divisions = 1;
 
@@ -147,6 +217,11 @@ class MusicXML {
     return noteDuration / divisions;
   }
 
+  /// 
+  /// Adds a rest (pause) for `duration` beats (for the given voice)
+  /// 
+  /// Internally creates a MusicXMLEventRest
+  /// 
   void rest(double duration, int voice) {
     var rest = new MusicXMLEventRest(this);
     rest.voice = voice;
@@ -154,6 +229,18 @@ class MusicXML {
     addEvent(rest);
   }
 
+  /// 
+  /// Similar to [addEvent], but merges the input `noteEvent` into a previous
+  /// event IF the previous event is a compound note.
+  /// 
+  /// If the previous event is NOT a compound note, the input `noteEvent` is
+  /// converted into a compound note so that it can accept any future
+  /// requests to `mergeNote`s
+  /// 
+  /// If `resolve` is true, after performing the above logic and adding or updating 
+  /// a compound note, it marks the last compound note as "complete", so
+  /// it may no longer accept any note merges.
+  /// 
   void mergeNote(MusicXMLEventNote noteEvent,bool resolve) {
     if(lastNote != null) {
       if(lastNote.compoundNote && !lastNote.compoundNoteResolved) {
@@ -175,6 +262,9 @@ class MusicXML {
     addEvent(noteEvent);
   }
 
+  /// Resets [MusicXML.duration], [MusicXML.absoluteDuration], 
+  ///  [MusicXMLEvent.time] and [MusicXMLEvent.absoluteTime] and recalculates
+  /// their values by traversing [MusicXML.events]
   void recalculateAbsoluteTime() {
     duration = 0.0;
     absoluteDuration = 0.0;
@@ -185,6 +275,9 @@ class MusicXML {
     }
   }
 
+  /// Increases ALL [MusicXMLEventDivision]s by a factor of `divMul`
+  /// and also updates every single time/duration field appropriately
+  /// by calling [recalculateAbsoluteTime]
   void multiplyDivisions(int divMul) {
     for(final event in events) {
       if(event is MusicXMLEventDivision) {
@@ -196,6 +289,11 @@ class MusicXML {
     recalculateAbsoluteTime();
   }
 
+  /// Aims to reduce every [MusicXMLEventDivision.divisions] as 
+  /// much as possible by calculating the greatest common denominator
+  /// of each time value and dividing the above by this result
+  /// and also updates every single time/duration field appropriately
+  /// by calling [recalculateAbsoluteTime]
   void factorDivisions() {
     // who cares about computational efficiency anyway
     
@@ -396,6 +494,7 @@ class MusicXMLUtils {
     }
   }
 
+  /// Opens the specified file, reads it, and parses it into a [MusicXML] class
   static MusicXML parseFile(String filePath) {
     final file = new File(filePath);
     final document = html.parseXmlDocument(file.readAsStringSync());
@@ -409,6 +508,7 @@ class MusicXMLUtils {
     return out;
   }
 
+  /// Converts the input [MusicXML] class into an XML String
   static String serializeMusicXML(MusicXML musicXML) {
     String out = "";
     int indentLevel = 0;
@@ -882,8 +982,4 @@ class MusicXMLUtils {
 
     return out;
   }
-}
-
-MusicXML getDefaultFile() {
-  return MusicXMLUtils.parseFile("E:\\Work\\Neutrino\\NEUTRINO\\score\\musicxml\\9_mochistu.musicxml");
 }
