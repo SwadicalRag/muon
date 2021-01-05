@@ -1,16 +1,20 @@
-# muon
+# Muon
 
-A new Flutter project.
+A GUI for the [Neutrino neural singing synthesizer](https://n3utrino.work), written in Flutter.
 
-## Getting Started
+## Usage
 
-This project is a starting point for a Flutter application.
+Coming soon!
 
-A few resources to get you started if this is your first Flutter project:
+## Changelog
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+### [05/01/2021] 0.0.2 - Proof of concept
+ - Cleaned up code, documented many functions and classes
+ - Fixed a bug with the flutter_desktop_audio plugin that caused deadlocks
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### [04/01/2021] 0.0.1 - Proof of concept
+ - Basic functionality implemented
+
+## Nota bene
+
+This is my first Dart/Flutter project, and I am still learning how the Flutter engine works. Though I can figure out how to write logic for a component, I may not know the best way to do it, and I certainly am not familiar with the best practices for Dart and Flutter. I am sorry in advance.
