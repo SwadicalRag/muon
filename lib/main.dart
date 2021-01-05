@@ -8,6 +8,8 @@ import "package:muon/serializable/settings.dart";
 
 import "package:window_size/window_size.dart";
 
+/// Light/Dark mode implemented as a reactive boolean
+/// This happened to be the easiest way to implement this.
 final darkMode = getMuonSettings().darkMode.obs..listen((bool newVal) {
   final settings = getMuonSettings();
 

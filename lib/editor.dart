@@ -23,6 +23,7 @@ final currentProject = MuonProjectController.defaultProject();
 class MuonEditor extends StatefulWidget {
   MuonEditor() : super();
 
+  /// Shows the welcome screen via [showDialog]
   static void showWelcomeScreen(BuildContext context) {
     showDialog<void>(
       context: context,
@@ -33,6 +34,7 @@ class MuonEditor extends StatefulWidget {
     );
   }
 
+  /// Shows the first time setup screen via [showDialog]
   static void performFirstTimeSetup(BuildContext context) {
     showDialog<void>(
       context: context,
@@ -43,6 +45,8 @@ class MuonEditor extends StatefulWidget {
     );
   }
 
+  /// Opens a file selector dialog and prompts the user to open
+  /// a project.json file
   static Future openProject(BuildContext context) {
     return FileSelectorPlatform.instance.openFile(
       confirmButtonText: "Open Project",
@@ -70,6 +74,8 @@ class MuonEditor extends StatefulWidget {
     }); // oh wow i am so naughty
   }
 
+  /// Opens a file selector dialog and prompts the user to create
+  /// a project.json file
   static Future createNewProject() {
     return FileSelectorPlatform.instance.getSavePath(
       confirmButtonText: "Create Project",
@@ -95,6 +101,11 @@ class MuonEditor extends StatefulWidget {
     .catchError((err) {print("internal error: " + err.toString());}); // oh wow i am so naughty
   }
 
+  /// Compiles all voices, and then plays audio from the playhead's
+  /// current position
+  /// 
+  /// Will show snackbars on errors
+  /// 
   static Future<void> playAudio(BuildContext context) async {
     if(currentProject.internalStatus.value != "idle") {return;}
 
@@ -153,6 +164,10 @@ class MuonEditor extends StatefulWidget {
     await voice.vocodeWORLD();
   }
 
+  /// Compiles all voices with NSF
+  /// 
+  /// Will show snackbars on progress
+  /// 
   static Future<void> compileVoiceInternalNSF(BuildContext context) async {
     currentProject.internalStatus.value = "compiling_nsf";
     int voiceID = 0;
@@ -194,6 +209,8 @@ class MuonEditor extends StatefulWidget {
     }
   }
 
+  /// Stops any currently playing audio, if there is any.
+  /// Otherwise, brings the playhead to the start of the project.
   static Future<void> stopAudio() async {
     for(final voice in currentProject.voices) {
       if(voice.audioPlayer != null) {
