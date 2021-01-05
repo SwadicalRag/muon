@@ -8,33 +8,60 @@ import "package:muon/serializable/muon.dart";
 import "package:muon/logic/musicxml.dart";
 import "package:path/path.dart" as p;
 
+/// 
+/// The main class where the muon project is stored.
+/// Has reactive getters/setters with the aid of GetX
+/// 
 class MuonProjectController extends GetxController {
+  /// The directory path of this project
   final projectDir = "".obs;
+
+  /// The file name of this project (with file extension)
   final projectFileName = "project.json".obs;
+
+  /// The file name of this project (without file extension)
   String get projectFileNameNoExt => p.basenameWithoutExtension(projectFileName.value);
 
-  // tempo
+  /// Beats per minute
   final bpm = 120.0.obs;
+  
+  /// Internal time units per beat (for internal subdivision)
   final timeUnitsPerBeat = 1.obs;
 
-  // time signature
+  /// Beats per measure (numerator)
   final beatsPerMeasure = 4.obs;
+
+  /// Beat value (denominator), is a power of two
+  /// 4 = quarter notes, 8 = eighth notes, etc.
   final beatValue = 4.obs;
 
+  /// The list of all of the voices in this proejct
   final voices = RxList<MuonVoiceController>([]);
 
-  // other
+  /// The index of the voice being currently edited/selected
   final currentVoiceID = 0.obs;
+
+  /// A list of all selected notes in this project (i.e. control A/mouse select)
   final selectedNotes = Map<MuonNoteController,bool>().obs;
+
+  /// Current time value of where the playhead is in beats
   final playheadTime = 0.0.obs;
+
+  /// Internally used for Control+C/X/V
   List<MuonNote> copiedNotes = [];
+
+  /// Internally used for Control+C/X/V
   List<MuonVoiceController> copiedNotesVoices = [];
+
+  /// Can be "idle" | "compiling" | "compiling_nsf" | "playing"
+  /// Used by the UI to figure out if certain actions are valid
   final internalStatus = "idle".obs;
   
-  // subdivision manager
+  /// Current number of visible subdivisions
   final currentSubdivision = 1.obs;
 
-  // internal timers
+  /// Internal timer registered by this class to track the playhead
+  /// TODO: this should be removed once FFI is complete
   Timer playbackTimer;
 
   @override
@@ -47,25 +74,26 @@ class MuonProjectController extends GetxController {
     super.dispose();
   }
 
+  // MISCELLANEOUS METHODS
+
+  /// Helper method to concatenate this project's filepath
+  /// with a given subtree path
   String getProjectFilePath(String filePath) {
     return p.absolute(projectDir + "/" + filePath);
   }
 
+  /// Helper method to add a voice. Also updates the voice's project reference.
   void addVoice(MuonVoiceController voice) {
     voice.project = this;
     voices.add(voice);
   }
 
-  void setSubdivision(int subdivision) {
-    factorTimeUnitsPerBeat();
-    setTimeUnitsPerBeat(timeUnitsPerBeat.value * subdivision);
-    currentSubdivision.value = subdivision;
-  }
-
+  /// Returns the number of milliseconds until the first phoneme label
   int getLabelMillisecondOffset() {
     return (this.beatsPerMeasure / (this.bpm.value / 60) * 1000 * (4 / this.beatValue.value)).round();
   }
 
+  /// updates the contents of this controller with the input controller
   void updateWith(MuonProjectController controller) {
     this.projectDir.value = controller.projectDir.value;
     this.bpm.value = controller.bpm.value;
@@ -82,6 +110,36 @@ class MuonProjectController extends GetxController {
       this.selectedNotes[selectedNoteKey] = controller.selectedNotes[selectedNoteKey];
     }
   }
+
+  void setupPlaybackTimers() {
+    // NB: this is temporary.
+    // It is my hope that I can get rid of these ugly async calls
+    // once we move to FFI for managing audio
+    playbackTimer = Timer.periodic(Duration(milliseconds: 1),(Timer t) async {
+      if(this.voices.length > this.currentVoiceID.value) {
+        MuonVoiceController voice = this.voices[this.currentVoiceID.value];
+        if(voice.audioPlayer != null) {
+          if(this.internalStatus.value == "playing") {
+            dynamic posDur = await voice.audioPlayer.getPosition();
+            if(posDur is Duration) {
+              int curPos = posDur.inMilliseconds;
+
+              if(curPos >= voice.audioPlayerDuration) {
+                this.playheadTime.value = 0;
+                this.internalStatus.value = "idle";
+              }
+              else {
+                int voicePos = curPos - this.getLabelMillisecondOffset();
+                this.playheadTime.value = voicePos / 1000 * (this.bpm / 60);
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // DEFAULT PROJECT
 
   static MuonProjectController defaultProject() {
     final out = MuonProjectController();
@@ -128,32 +186,12 @@ class MuonProjectController extends GetxController {
     return out;
   }
 
-  void setupPlaybackTimers() {
-    // NB: this is temporary.
-    // It is my hope that I can get rid of these ugly async calls
-    // once we move to FFI for managing audio
-    playbackTimer = Timer.periodic(Duration(milliseconds: 1),(Timer t) async {
-      if(this.voices.length > this.currentVoiceID.value) {
-        MuonVoiceController voice = this.voices[this.currentVoiceID.value];
-        if(voice.audioPlayer != null) {
-          if(this.internalStatus.value == "playing") {
-            dynamic posDur = await voice.audioPlayer.getPosition();
-            if(posDur is Duration) {
-              int curPos = posDur.inMilliseconds;
+  // TIME UNIT MANAGEMENT
 
-              if(curPos >= voice.audioPlayerDuration) {
-                this.playheadTime.value = 0;
-                this.internalStatus.value = "idle";
-              }
-              else {
-                int voicePos = curPos - this.getLabelMillisecondOffset();
-                this.playheadTime.value = voicePos / 1000 * (this.bpm / 60);
-              }
-            }
-          }
-        }
-      }
-    });
+  void setSubdivision(int subdivision) {
+    factorTimeUnitsPerBeat();
+    setTimeUnitsPerBeat(timeUnitsPerBeat.value * subdivision);
+    currentSubdivision.value = subdivision;
   }
 
   void factorTimeUnitsPerBeat() {
@@ -202,6 +240,8 @@ class MuonProjectController extends GetxController {
 
     currentSubdivision.value = 1;
   }
+
+  // IMPORTING/EXPORTING VOICES
 
   bool importVoiceFromMIDIFile(String midiFilePath,bool importTimeMetadata) {
     var midiFile = File(midiFilePath);
@@ -386,6 +426,8 @@ class MuonProjectController extends GetxController {
     return musicXML;
   }
 
+  // SAVING/LOADING
+
   void save() {
     final serializable = this.toSerializable();
     serializable.save();
@@ -400,6 +442,8 @@ class MuonProjectController extends GetxController {
     final serializable = MuonProject.loadFromFile(projectFile);
     return MuonProjectController.fromSerializable(serializable);
   }
+
+  // SERIALIZATION INTERFACE
 
   MuonProject toSerializable() {
     final out = MuonProject();
