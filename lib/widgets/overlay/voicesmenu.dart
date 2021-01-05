@@ -67,7 +67,7 @@ class MuonVoicesMenu extends StatelessWidget {
                         .catchError((err) {print("internal file browser error: " + err.toString());}) // oh wow i am so naughty
                         .then((value) {
                           if(value != null) {
-                            MusicXML musicXML = parseFile(value.path);
+                            MusicXML musicXML = MusicXMLUtils.parseFile(value.path);
                             currentProject.importVoiceFromMusicXML(musicXML, true);
                           }
                         });

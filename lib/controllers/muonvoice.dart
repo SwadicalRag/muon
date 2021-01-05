@@ -90,7 +90,7 @@ class MuonVoiceController extends GetxController {
 
   Future<void> makeLabels() async {
     final musicXML = exportVoiceToMusicXML();
-    final musicXMLString = serializeMusicXML(musicXML);
+    final musicXMLString = MusicXMLUtils.serializeMusicXML(musicXML);
 
     if(!Directory(project.getProjectFilePath("musicxml/")).existsSync()) {
       Directory(project.getProjectFilePath("musicxml/")).createSync();

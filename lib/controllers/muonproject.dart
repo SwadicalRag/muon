@@ -429,25 +429,3 @@ class MuonProjectController extends GetxController {
     return out;
   }
 }
-
-void testProject() {
-  final originalProject = MuonProjectController();
-  originalProject.projectDir.value = "testproject";
-
-  final musicXML = parseFile("E:\\Work\\Neutrino\\NEUTRINO\\score\\musicxml\\9_mochistu.musicxml");
-
-  originalProject.importVoiceFromMusicXML(musicXML, true);
-  originalProject.importVoiceFromMIDIFile("E:\\Work\\Neutrino\\NEUTRINO\\score\\musicxml\\9 mochistu.mid", true);
-
-  originalProject.save();
-
-  final loadedProject = MuonProjectController.loadFromDir("testproject","project.json");
-  final voiceMusicXML = loadedProject.voices[0].exportVoiceToMusicXML();
-
-  final serializedMusicXML = serializeMusicXML(voiceMusicXML);
-
-  final outFile = File("testproject/out.musicxml");
-  outFile.writeAsStringSync(serializedMusicXML);
-
-  // print(serializedMusicXML);
-}
