@@ -5,14 +5,27 @@ import "package:muon/serializable/muon.dart";
 class MuonNoteController extends GetxController {
   MuonVoiceController voice;
 
+  /// The alphabetical value of this note
+  /// `/[A-G]#?/`
   final note = "C".obs;
+
+  /// The octave of this note
   final octave = 4.obs;
+
+  /// Any lyrics attached to this note
+  /// (can be an empty string!)
   final lyric = "".obs;
 
-  // timing
+  /// The time at which this note starts
   final startAtTime = 0.obs;
+
+  /// The duration of this note
   final duration = 0.obs;
 
+  /// Adds `deltaSemitones` to this note
+  /// 
+  /// e.g. if this was a `C4`, adding `2` semitones gives you `D4`,
+  /// and adding `-2` semitones gives you `A#3`
   void addSemitones(int deltaSemitones) {
     final midiNotes = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 
