@@ -68,13 +68,10 @@ class MusicXMLPitch {
   int octave;
   String note;
 
-  @override
-  bool operator ==(Object other) {
-    if(other is MusicXMLPitch) {
-      if(other.octave == octave) {
-        if(other.note == note) {
-          return true;
-        }
+  bool isEqualTo(MusicXMLPitch other) {
+    if(other.octave == octave) {
+      if(other.note == note) {
+        return true;
       }
     }
 
@@ -214,7 +211,7 @@ class MusicXML {
   void mergeNote(MusicXMLEventNote noteEvent,bool resolve) {
     if(lastNote != null) {
       if(lastNote.compoundNote && !lastNote.compoundNoteResolved) {
-        if(lastNote.pitch == noteEvent.pitch) {
+        if(lastNote.pitch.isEqualTo(noteEvent.pitch)) {
           setGlobalAbsoluteDurationFromEvent(noteEvent,getGlobalAbsoluteDurationFromEvent(noteEvent) + noteEvent.absoluteDuration);
           
           lastNote.duration += noteEvent.duration;
