@@ -16,6 +16,8 @@ import "package:muon/main.dart";
 import "package:muon/pianoroll.dart";
 import "package:muon/serializable/settings.dart";
 import "package:file_selector_platform_interface/file_selector_platform_interface.dart";
+import 'package:muon/widgets/dialogs/firsttimesetup.dart';
+import 'package:muon/widgets/dialogs/welcome.dart';
 import "package:path/path.dart" as p;
 
 final currentProject = MuonProjectController.defaultProject();
@@ -41,69 +43,28 @@ List<String> getAllVoiceModels() {
 class MuonEditor extends StatefulWidget {
   MuonEditor() : super();
 
-  @override
-  _MuonEditorState createState() => _MuonEditorState();
-}
-
-class _MuonEditorState extends State<MuonEditor> {
-  static bool _firstTimeRunning = true;
-
-  void _welcomeScreen() {
+  static void showWelcomeScreen(BuildContext context) {
     showDialog<void>(
       context: context,
       barrierDismissible: false, // user must tap button!
-      builder: (BuildContext context) {
-        return Scaffold(
-          body: AlertDialog(
-            title: Center(child: Text("Welcome to Muon!")),
-            content: SingleChildScrollView(
-              child: ListBody(
-                children: <Widget>[
-                  RaisedButton(
-                    child: Text("Create New Project"),
-                    onPressed: () {
-                      Navigator.of(context, rootNavigator: true).pop();
-                      _createNewProject();
-                    }
-                  ),
-                  SizedBox(height: 10),
-                  RaisedButton(
-                    child: Text("Open Project"),
-                    onPressed: () {
-                      Navigator.of(context, rootNavigator: true).pop();
-                      _openProject(context);
-                    }
-                  )
-                ],
-              ),
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: Text("About"),
-                onPressed: () {
-                  showAboutDialog(
-                    context: context,
-                    applicationVersion: "0.0.1",
-                    applicationName: "Muon",
-                    applicationLegalese: "copyright (c) swadical 2021",
-                  );
-                },
-              ),
-              OutlineButton(
-                child: Text("Quit"),
-                onPressed: () {
-                  exit(0);
-                },
-              ),
-            ],
-          ),
-        );
+      builder: (BuildContext subContext) {
+        return MuonWelcomeDialog();
       },
     );
   }
 
-  void _openProject(BuildContext context) {
-    FileSelectorPlatform.instance.openFile(
+  static void performFirstTimeSetup(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false, // user must tap button!
+      builder: (BuildContext subContext) {
+        return MuonFirstTimeSetupDialog();
+      },
+    );
+  }
+
+  static Future openProject(BuildContext context) {
+    return FileSelectorPlatform.instance.openFile(
       confirmButtonText: "Open Project",
       acceptedTypeGroups: [XTypeGroup(
         label: "Muon Project Files",
@@ -114,6 +75,8 @@ class _MuonEditorState extends State<MuonEditor> {
       if(value != null) {
         final proj = MuonProjectController.loadFromFile(value.path);
         currentProject.updateWith(proj);
+
+        return true;
       }
     })
     .catchError((err) {
@@ -127,8 +90,8 @@ class _MuonEditorState extends State<MuonEditor> {
     }); // oh wow i am so naughty
   }
 
-  void _createNewProject() {
-    FileSelectorPlatform.instance.getSavePath(
+  static Future createNewProject() {
+    return FileSelectorPlatform.instance.getSavePath(
       confirmButtonText: "Create Project",
       acceptedTypeGroups: [XTypeGroup(
         label: "Muon Project Files",
@@ -145,10 +108,19 @@ class _MuonEditorState extends State<MuonEditor> {
           currentProject.projectFileName.value += ".json";
         }
         currentProject.save();
+
+        return true;
       }
     })
     .catchError((err) {print("internal error: " + err.toString());}); // oh wow i am so naughty
   }
+
+  @override
+  _MuonEditorState createState() => _MuonEditorState();
+}
+
+class _MuonEditorState extends State<MuonEditor> {
+  static bool _firstTimeRunning = true;
 
   Future<void> _playAudio() async {
     if(currentProject.internalStatus.value != "idle") {return;}
@@ -263,90 +235,6 @@ class _MuonEditorState extends State<MuonEditor> {
     }
   }
 
-  void _performFirstTimeSetup() {
-    final settings = getMuonSettings();
-
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false, // user must tap button!
-      builder: (BuildContext subContext) {
-        return Scaffold(
-          body: AlertDialog(
-            title: Text("Hello and welcome!"),
-            content: SingleChildScrollView(
-              child: ListBody(
-                children: <Widget>[
-                  Text("Before you start using Muon, we need to do some housekeeping!"),
-                  SizedBox(height: 15,),
-                  RaisedButton(
-                    child: Text("Choose Neutrino SDK Folder Location"),
-                    onPressed: () {
-                      FileSelectorPlatform.instance.getDirectoryPath(
-                        confirmButtonText: "Open Neutrino SDK",
-                      )
-                      .catchError((err) {print("internal file browser error: " + err.toString());}) // oh wow i am so naughty
-                      .then((value) {
-                        if(value != null) {
-                          if(Directory(value).existsSync()) {
-                            if(File(value + "/bin/NEUTRINO.exe").existsSync() || File(value + "/bin/NEUTRINO").existsSync()) {
-                              settings.neutrinoDir = value;
-                              settings.save();
-                              return;
-                            }
-                          }
-
-                          settings.neutrinoDir = "";
-                          settings.save();
-
-                          ScaffoldMessenger.of(subContext).hideCurrentSnackBar();
-                          ScaffoldMessenger.of(subContext).showSnackBar(
-                            SnackBar(backgroundColor: Theme.of(subContext).errorColor,
-                              content: new Text("Error: That doesn't seem like a valid NEUTRINO directory!"),
-                              duration: new Duration(seconds: 5),
-                            )
-                          );
-                        }
-                      });
-                    },
-                  ),
-                  SizedBox(height: 15,),
-                  SwitchListTile(
-                    title: Text("Please burn my eyes"),
-                    secondary: Icon(Icons.lightbulb_outline),
-                    value: !darkMode.value,
-                    onChanged: (value) {
-                      darkMode.value = !value;
-                    },
-                  )
-                ],
-              ),
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: Text("I'm all set!"),
-                onPressed: () {
-                  if(settings.neutrinoDir == "") {
-                    ScaffoldMessenger.of(subContext).hideCurrentSnackBar();
-                    ScaffoldMessenger.of(subContext).showSnackBar(
-                      SnackBar(backgroundColor: Theme.of(subContext).errorColor,
-                        content: new Text("Error: Please choose a valid directory for the NEUTRINO library!"),
-                        duration: new Duration(seconds: 5),
-                      )
-                    );
-                  }
-                  else {
-                    Navigator.of(subContext, rootNavigator: true).pop();
-                    _welcomeScreen();
-                  }
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   void _onFirstRun(BuildContext context) {
     final settings = getMuonSettings();
 
@@ -354,14 +242,14 @@ class _MuonEditorState extends State<MuonEditor> {
       // We have already performed first time set-up!
 
       Timer(Duration(milliseconds: 1),() {
-        _welcomeScreen();
+        MuonEditor.showWelcomeScreen(context);
       });
     }
     else {
       // no neutrino library, so let's perform first time set-up!
 
       Timer(Duration(milliseconds: 1),() {
-        _performFirstTimeSetup();
+        MuonEditor.performFirstTimeSetup(context);
       });
     }
   }
@@ -463,14 +351,14 @@ class _MuonEditorState extends State<MuonEditor> {
             icon: const Icon(Icons.folder),
             tooltip: "Load",
             onPressed: () {
-              _openProject(context);
+              MuonEditor.openProject(context);
             },
           ),
           IconButton(
             icon: const Icon(Icons.create),
             tooltip: "New project",
             onPressed: () {
-              _createNewProject();
+              MuonEditor.createNewProject();
             },
           ),
           SizedBox(width: 20,),
