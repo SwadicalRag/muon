@@ -1,44 +1,24 @@
 
 import "dart:async";
-import "dart:io";
 import "dart:math";
 
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
-import "package:get/get.dart";
 import "package:muon/controllers/muonnote.dart";
 import "package:muon/controllers/muonproject.dart";
 import "package:muon/controllers/muonvoice.dart";
 import "package:muon/logic/japanese.dart";
-import "package:muon/logic/musicxml.dart";
-import "package:muon/main.dart";
 import "package:muon/pianoroll.dart";
 import "package:muon/serializable/settings.dart";
 import "package:file_selector_platform_interface/file_selector_platform_interface.dart";
 import 'package:muon/widgets/dialogs/firsttimesetup.dart';
 import 'package:muon/widgets/dialogs/welcome.dart';
+import 'package:muon/widgets/overlay/appbar.dart';
+import 'package:muon/widgets/overlay/sidebar.dart';
 import "package:path/path.dart" as p;
 
 final currentProject = MuonProjectController.defaultProject();
-
-List<String> getAllVoiceModels() {
-  final List<String> items = [];
-
-  final modelsDir = Directory(getRawProgramPath("model"));
-  final modelsDirFiles = modelsDir.listSync();
-
-  for(final modelsDirFile in modelsDirFiles) {
-    if(modelsDirFile is Directory) {
-      final modelName = p.relative(modelsDirFile.path,from: modelsDir.path);
-      items.add(modelName);
-    }
-  }
-
-  items.sort();
-
-  return items;
-}
 
 class MuonEditor extends StatefulWidget {
   MuonEditor() : super();
@@ -115,14 +95,7 @@ class MuonEditor extends StatefulWidget {
     .catchError((err) {print("internal error: " + err.toString());}); // oh wow i am so naughty
   }
 
-  @override
-  _MuonEditorState createState() => _MuonEditorState();
-}
-
-class _MuonEditorState extends State<MuonEditor> {
-  static bool _firstTimeRunning = true;
-
-  Future<void> _playAudio() async {
+  static Future<void> playAudio(BuildContext context) async {
     if(currentProject.internalStatus.value != "idle") {return;}
 
     final playPos = Duration(
@@ -170,7 +143,7 @@ class _MuonEditorState extends State<MuonEditor> {
     }
   }
 
-  Future<void> _compileVoiceInternal(MuonVoiceController voice) async {
+  static Future<void> _compileVoiceInternal(MuonVoiceController voice) async {
     if(voice.audioPlayer != null) {
       await voice.audioPlayer.unload();
     }
@@ -180,7 +153,7 @@ class _MuonEditorState extends State<MuonEditor> {
     await voice.vocodeWORLD();
   }
 
-  Future<void> _compileVoiceInternalNSF() async {
+  static Future<void> compileVoiceInternalNSF(BuildContext context) async {
     currentProject.internalStatus.value = "compiling_nsf";
     int voiceID = 0;
     for(final voice in currentProject.voices) {
@@ -202,7 +175,7 @@ class _MuonEditorState extends State<MuonEditor> {
     );
   }
 
-  Future<bool> _playVoiceInternal(MuonVoiceController voice,Duration playPos,double volume) async {
+  static Future<bool> _playVoiceInternal(MuonVoiceController voice,Duration playPos,double volume) async {
     if(voice.audioPlayer != null) {
       await voice.audioPlayer.unload();
     }
@@ -221,7 +194,7 @@ class _MuonEditorState extends State<MuonEditor> {
     }
   }
 
-  Future<void> _stopAudio() async {
+  static Future<void> stopAudio() async {
     for(final voice in currentProject.voices) {
       if(voice.audioPlayer != null) {
         voice.audioPlayer.unload();
@@ -234,6 +207,13 @@ class _MuonEditorState extends State<MuonEditor> {
       currentProject.playheadTime.value = 0;
     }
   }
+
+  @override
+  _MuonEditorState createState() => _MuonEditorState();
+}
+
+class _MuonEditorState extends State<MuonEditor> {
+  static bool _firstTimeRunning = true;
 
   void _onFirstRun(BuildContext context) {
     final settings = getMuonSettings();
@@ -263,107 +243,8 @@ class _MuonEditorState extends State<MuonEditor> {
       _onFirstRun(context);
     }
 
-    final themeData = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Muon Editor"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.exposure_plus_1),
-            tooltip: "Add subdivision",
-            onPressed: () {
-              currentProject.setSubdivision(currentProject.currentSubdivision.value + 1);
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.exposure_minus_1),
-            tooltip: "Subtract subdivision",
-            onPressed: () {
-              currentProject.setSubdivision(max(1,currentProject.currentSubdivision.value - 1));
-            },
-          ),
-          SizedBox(width: 40,),
-          Obx(() => IconButton(
-            icon: const Icon(Icons.play_arrow),
-            tooltip: "Play",
-            color: currentProject.internalStatus.value == "compiling" ? 
-              Colors.yellow : 
-                currentProject.internalStatus.value == "playing" ?
-                  Colors.green :
-                  Colors.white,
-            onPressed: () {
-              _playAudio();
-            },
-          )),
-          IconButton(
-            icon: const Icon(Icons.stop),
-            tooltip: "Stop",
-            onPressed: () {
-              _stopAudio();
-            },
-          ),
-          SizedBox(width: 40,),
-          IconButton(
-            icon: const Icon(Icons.timer),
-            tooltip: "Calculate phoneme labels",
-            onPressed: () {
-              for(final voice in currentProject.voices) {
-                voice.makeLabels();
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.music_note),
-            tooltip: "Calculate neutrino data",
-            onPressed: () {
-              for(final voice in currentProject.voices) {
-                voice.runNeutrino();
-              }
-            },
-          ),
-          Obx(() => IconButton(
-            icon: const Icon(Icons.computer),
-            color: currentProject.internalStatus.value == "compiling_nsf" ? 
-              Colors.yellow : Colors.white,
-            tooltip: "Render with NSF",
-            onPressed: () {
-              _compileVoiceInternalNSF();
-            },
-          )),
-          SizedBox(width: 40,),
-          Obx(() => IconButton(
-              icon: darkMode.value ? const Icon(Icons.lightbulb) : const Icon(Icons.lightbulb_outline),
-              tooltip: darkMode.value ? "Lights on" : "Lights out",
-              onPressed: () {
-                darkMode.value = !darkMode.value;
-              },
-            ),
-          ),
-          SizedBox(width: 40,),
-          IconButton(
-            icon: const Icon(Icons.save),
-            tooltip: "Save",
-            onPressed: () {
-              currentProject.save();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.folder),
-            tooltip: "Load",
-            onPressed: () {
-              MuonEditor.openProject(context);
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.create),
-            tooltip: "New project",
-            onPressed: () {
-              MuonEditor.createNewProject();
-            },
-          ),
-          SizedBox(width: 20,),
-        ],
-      ),
+      appBar: MuonAppBar(),
       // drawer: Drawer(
       //   child: ListView(
       //     children: [
@@ -700,287 +581,16 @@ class _MuonEditorState extends State<MuonEditor> {
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.space)) {
                   if(currentProject.internalStatus.value == "playing") {
-                    _stopAudio();
+                    MuonEditor.stopAudio();
                   }
                   else {
-                    _playAudio();
+                    MuonEditor.playAudio(context);
                   }
                 }
               },
             )
           ),
-          Container(
-            child: Column(
-              mainAxisSize: MainAxisSize.max,
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  child: Column(
-                    children: [
-                      SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.center,
-                        child: Text("Project Settings",style: TextStyle(fontSize: 26),)
-                      ),
-                      SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.center,
-                        child: Obx(() => Text(currentProject.bpm.value.toString() + " BPM",style: TextStyle(fontSize: 16),))
-                      ),
-                      Obx(() => Slider(
-                        value: currentProject.bpm.value,
-                        min: 40,
-                        max: 240,
-                        divisions: 200,
-                        label: currentProject.bpm.value.toString() + " bpm",
-                        onChanged: (double value) {
-                          currentProject.bpm.value = value.floorToDouble();
-                        },
-                      )),
-                      SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.center,
-                        child: Obx(() => Text(currentProject.beatsPerMeasure.value.toString() + " Beats per Measure",style: TextStyle(fontSize: 16),))
-                      ),
-                      Obx(() => Slider(
-                        value: currentProject.beatsPerMeasure.value.toDouble(),
-                        min: 1,
-                        max: 32,
-                        divisions: 32,
-                        label: currentProject.beatsPerMeasure.value.toString() + " beats",
-                        onChanged: (double value) {
-                          currentProject.beatsPerMeasure.value = value.round();
-                        },
-                      )),
-                      SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.center,
-                        child: Obx(() => Text("Beat Value of 1 / " + currentProject.beatValue.value.toString(),style: TextStyle(fontSize: 16),))
-                      ),
-                      Obx(() => Slider(
-                        value: log(currentProject.beatValue.value) / log(2),
-                        min: 1,
-                        max: 5,
-                        divisions: 4,
-                        label: "1 / " + currentProject.beatValue.value.toString(),
-                        onChanged: (double value) {
-                          currentProject.beatValue.value = pow(2,value.round());
-                        },
-                      )),
-                    ],
-                  )
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: Container(
-                    child: Column(
-                      verticalDirection: VerticalDirection.up,
-                      children: [
-                        Expanded(
-                          child: Scrollbar(
-                            child: Obx(() => ListView.builder(
-                              itemCount: currentProject.voices.length,
-                              itemBuilder: (context, index) {
-                                final voice = currentProject.voices[index];
-                                return Container(
-                                  height: 40,
-                                  margin: EdgeInsets.symmetric(horizontal: 5,vertical: 5),
-                                  padding: EdgeInsets.only(left: 15),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        margin: EdgeInsets.only(right: 10),
-                                        width: 10,
-                                        height: 10,
-                                        decoration: BoxDecoration(
-                                          color: voice.color,
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.white.withOpacity(0.7),
-                                              blurRadius: 2,
-                                              spreadRadius: 2,
-                                            ),
-                                          ]
-                                        ),
-                                      ),
-                                      Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Obx(() => Text(
-                                          "Voice " + (currentProject.voices.indexOf(voice) + 1).toString() + " (" + voice.modelName.value + ")",
-                                        ))
-                                      ),
-                                      Expanded(
-                                        child: Container(),
-                                      ),
-                                      Obx(() => IconButton(
-                                        icon: const Icon(Icons.center_focus_strong),
-                                        disabledColor: Colors.green.withOpacity(0.9),
-                                        tooltip: "Select voice",
-                                        onPressed: currentProject.currentVoiceID.value == currentProject.voices.indexOf(voice) ? null : () {
-                                          currentProject.currentVoiceID.value = currentProject.voices.indexOf(voice);
-                                        },
-                                      )),
-                                      PopupMenuButton(
-                                        icon: const Icon(Icons.speaker_notes),
-                                        tooltip: "Change voice model",
-                                        onSelected: (String result) {
-                                          voice.modelName.value = result;
-                                        },
-                                        itemBuilder: (BuildContext context) {
-                                          final List<PopupMenuItem<String>> items = [];
-
-                                          final models = getAllVoiceModels();
-
-                                          for(final modelName in models) {
-                                            items.add(
-                                              PopupMenuItem(
-                                                value: modelName,
-                                                child: Text(modelName),
-                                              ),
-                                            );
-                                          }
-
-                                          return items;
-                                        },
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete),
-                                        tooltip: "Delete voice",
-                                        onPressed: () {
-                                          currentProject.voices.remove(voice);
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: themeData.buttonColor,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.5),
-                                        blurRadius: 1,
-                                        spreadRadius: 1,
-                                      ),
-                                    ]
-                                  ),
-                                );
-                              },
-                            )),
-                          ),
-                        ),
-                        Container(
-                          padding: EdgeInsets.symmetric(vertical: 5),
-                          child: Stack(
-                            children: [
-                              Align(
-                                alignment: Alignment.center,
-                                child: Text("Voices",style: TextStyle(fontSize: 26),)
-                              ),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: Transform.translate(
-                                  offset: Offset(-5,0),
-                                  child: IconButton(
-                                    icon: const Icon(Icons.add),
-                                    tooltip: "Add voice",
-                                    onPressed: () {
-                                      final newVoice = MuonVoiceController();
-                                      newVoice.project = currentProject;
-                                      currentProject.voices.add(newVoice);
-                                    },
-                                  ),
-                                ),
-                              ),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: Transform.translate(
-                                  offset: Offset(-35,0),
-                                  child: IconButton(
-                                    icon: const Icon(Icons.code),
-                                    tooltip: "Import voice from MusicXML",
-                                    onPressed: () {
-                                      Timer(Duration(milliseconds: 50),() {
-                                        FileSelectorPlatform.instance.openFile(
-                                          confirmButtonText: "Open MusicXML File",
-                                        )
-                                        .catchError((err) {print("internal file browser error: " + err.toString());}) // oh wow i am so naughty
-                                        .then((value) {
-                                          if(value != null) {
-                                            MusicXML musicXML = parseFile(value.path);
-                                            currentProject.importVoiceFromMusicXML(musicXML, true);
-                                          }
-                                        });
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: Transform.translate(
-                                  offset: Offset(-65,0),
-                                  child: IconButton(
-                                    icon: const Icon(Icons.queue_music),
-                                    tooltip: "Import voice from MIDI",
-                                    onPressed: () {
-                                      Timer(Duration(milliseconds: 50),() {
-                                        FileSelectorPlatform.instance.openFile(
-                                          confirmButtonText: "Open MIDI File",
-                                        )
-                                        .catchError((err) {print("internal file browser error: " + err.toString());}) // oh wow i am so naughty
-                                        .then((value) {
-                                          if(value != null) {
-                                            currentProject.importVoiceFromMIDIFile(value.path, true);
-                                          }
-                                        });
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          decoration: BoxDecoration(
-                            color: themeData.scaffoldBackgroundColor,
-                            boxShadow: [
-                              BoxShadow(
-                                offset: Offset(0,5),
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 3,
-                                spreadRadius: 1,
-                              ),
-                            ]
-                          ),
-                        ),
-                      ],
-                    ),
-                    decoration: BoxDecoration(
-                      color: themeData.scaffoldBackgroundColor,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
-                          blurRadius: 1,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            width: 400,
-            decoration: BoxDecoration(
-              color: themeData.scaffoldBackgroundColor,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.5),
-                  blurRadius: 7,
-                  spreadRadius: 1,
-                ),
-              ]
-            ),
-          ),
+          MuonSidebar(),
         ]
       ),
     );
