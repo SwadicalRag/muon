@@ -1,3 +1,4 @@
+import 'dart:async';
 import "dart:io";
 import "package:get/get.dart";
 import "package:dart_midi/dart_midi.dart";
@@ -29,10 +30,22 @@ class MuonProjectController extends GetxController {
   List<MuonNote> copiedNotes = [];
   List<MuonVoiceController> copiedNotesVoices = [];
   final internalStatus = "idle".obs;
-  int internalPlayTime = 0;
   
   // subdivision manager
   final currentSubdivision = 1.obs;
+
+  // internal timers
+  Timer playbackTimer;
+
+  @override
+  void dispose() {
+    if(playbackTimer != null) {
+      playbackTimer.cancel();
+      playbackTimer = null;
+    }
+    
+    super.dispose();
+  }
 
   String getProjectFilePath(String filePath) {
     return p.absolute(projectDir + "/" + filePath);
@@ -113,6 +126,34 @@ class MuonProjectController extends GetxController {
     out.setSubdivision(4);
 
     return out;
+  }
+
+  void setupPlaybackTimers() {
+    // NB: this is temporary.
+    // It is my hope that I can get rid of these ugly async calls
+    // once we move to FFI for managing audio
+    playbackTimer = Timer.periodic(Duration(milliseconds: 1),(Timer t) async {
+      if(this.voices.length > this.currentVoiceID.value) {
+        MuonVoiceController voice = this.voices[this.currentVoiceID.value];
+        if(voice.audioPlayer != null) {
+          if(this.internalStatus.value == "playing") {
+            dynamic posDur = await voice.audioPlayer.getPosition();
+            if(posDur is Duration) {
+              int curPos = posDur.inMilliseconds;
+
+              if(curPos >= voice.audioPlayerDuration) {
+                this.playheadTime.value = 0;
+                this.internalStatus.value = "idle";
+              }
+              else {
+                int voicePos = curPos - this.getLabelMillisecondOffset();
+                this.playheadTime.value = voicePos / 1000 * (this.bpm / 60);
+              }
+            }
+          }
+        }
+      }
+    });
   }
 
   void factorTimeUnitsPerBeat() {

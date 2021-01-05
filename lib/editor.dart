@@ -179,7 +179,6 @@ class _MuonEditorState extends State<MuonEditor> {
       voiceRes.add(_playVoiceInternal(voice,playPos, 1 / currentProject.voices.length));
     }
 
-    currentProject.internalPlayTime = DateTime.now().millisecondsSinceEpoch;
     final voiceRes2 = await Future.wait(voiceRes);
 
     var errorShown = false;
@@ -269,50 +268,8 @@ class _MuonEditorState extends State<MuonEditor> {
   @override
   Widget build(BuildContext context) {
     final settings = getMuonSettings();
-    
-    Timer.periodic(Duration(milliseconds: 500),(Timer t) async {
-      if(currentProject.voices.length > currentProject.currentVoiceID.value) {
-        MuonVoiceController voice = currentProject.voices[currentProject.currentVoiceID.value];
-        if(voice.audioPlayer != null) {
-          if(currentProject.internalStatus.value == "playing") {
-            dynamic posDur = await voice.audioPlayer.getPosition();
-            if(posDur is Duration) {
-              int curPos = posDur.inMilliseconds;
 
-              if(curPos >= voice.audioPlayerDuration) {
-                currentProject.internalPlayTime = 0;
-                currentProject.playheadTime.value = 0;
-                currentProject.internalStatus.value = "idle";
-              }
-              else {
-                int voicePos = curPos - currentProject.getLabelMillisecondOffset();
-                currentProject.internalPlayTime = DateTime.now().millisecondsSinceEpoch - voicePos;
-              }
-            }
-          }
-        }
-      }
-    });
-    
-    Timer.periodic(Duration(milliseconds: 1),(Timer t) async {
-      if(currentProject.voices.length > currentProject.currentVoiceID.value) {
-        MuonVoiceController voice = currentProject.voices[currentProject.currentVoiceID.value];
-        if(voice.audioPlayer != null) {
-          if(currentProject.internalStatus.value == "playing") {
-            int voicePos = DateTime.now().millisecondsSinceEpoch - currentProject.internalPlayTime;
-            int curPos = voicePos + currentProject.getLabelMillisecondOffset();
-
-            if(curPos >= voice.audioPlayerDuration) {
-              currentProject.playheadTime.value = 0;
-              currentProject.internalStatus.value = "idle";
-            }
-            else {
-              currentProject.playheadTime.value = voicePos / 1000 * (currentProject.bpm / 60);
-            }
-          }
-        }
-      }
-    });
+    currentProject.setupPlaybackTimers();
 
     if((settings.neutrinoDir == "") && !_firstTimeSetupDone) {
       // perform first time setup
