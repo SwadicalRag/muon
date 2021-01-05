@@ -107,73 +107,19 @@ class _NoteResolution {
 
 class MusicXML {
   List<MusicXMLEvent> events = [];
-  Map<int,double> voiceDuration = {};
-  Map<int,double> voiceAbsoluteDuration = {};
+  double duration = 0.0;
+  double absoluteDuration = 0.0;
   MusicXMLEventTempo lastTempo;
   MusicXMLEventTimeSignature lastTimeSignature;
   MusicXMLEventDivision lastDivision;
   MusicXMLEventNote lastNote;
 
-  bool _independentVoiceMode = false;
-
-  double getGlobalDurationFromEvent(MusicXMLEvent event) {
-    if(_independentVoiceMode && (event is MusicXMLEventVoiced)) {
-      if(voiceDuration.containsKey(event.voice)) {
-        return voiceDuration[event.voice];
-      }
-      else {
-        return 0;
-      }
-    }
-
-    if(voiceDuration.containsKey(1)) {
-      return voiceDuration[1];
-    }
-
-    return 0;
-  }
-
-  double getGlobalAbsoluteDurationFromEvent(MusicXMLEvent event) {
-    if(_independentVoiceMode && (event is MusicXMLEventVoiced)) {
-      if(voiceDuration.containsKey(event.voice)) {
-        return voiceAbsoluteDuration[event.voice];
-      }
-      else {
-        return 0;
-      }
-    }
-
-    if(voiceDuration.containsKey(1)) {
-      return voiceAbsoluteDuration[1];
-    }
-    
-    return 0;
-  }
-
-  void setGlobalDurationFromEvent(MusicXMLEvent event, double duration) {
-    if(_independentVoiceMode && (event is MusicXMLEventVoiced)) {
-      voiceDuration[event.voice] = duration;
-    }
-
-    voiceDuration[1] = duration;
-  }
-
-  void setGlobalAbsoluteDurationFromEvent(MusicXMLEvent event, double absoluteDuration) {
-    if(_independentVoiceMode && (event is MusicXMLEventVoiced)) {
-      voiceAbsoluteDuration[event.voice] = absoluteDuration;
-    }
-
-    voiceAbsoluteDuration[1] = absoluteDuration;
-  }
-
   void addEvent(MusicXMLEvent event) {
-    final duration = getGlobalDurationFromEvent(event);
-    final absoluteDuration = getGlobalAbsoluteDurationFromEvent(event);
     event.time = duration;
     event.absoluteTime = absoluteDuration;
 
-    setGlobalDurationFromEvent(event,duration + event.duration);
-    setGlobalAbsoluteDurationFromEvent(event,absoluteDuration + event.absoluteDuration);
+    duration = duration + event.duration;
+    absoluteDuration = absoluteDuration + event.absoluteDuration;
 
     if(event is MusicXMLEventTempo) {
       lastTempo = event;
@@ -212,10 +158,10 @@ class MusicXML {
     if(lastNote != null) {
       if(lastNote.compoundNote && !lastNote.compoundNoteResolved) {
         if(lastNote.pitch.isEqualTo(noteEvent.pitch)) {
-          setGlobalAbsoluteDurationFromEvent(noteEvent,getGlobalAbsoluteDurationFromEvent(noteEvent) + noteEvent.absoluteDuration);
+          absoluteDuration = absoluteDuration + noteEvent.absoluteDuration;
           
           lastNote.duration += noteEvent.duration;
-          setGlobalDurationFromEvent(noteEvent,getGlobalDurationFromEvent(noteEvent) + noteEvent.duration);
+          duration = duration + noteEvent.duration;
 
           lastNote.compoundNoteResolved = resolve;
 
@@ -230,18 +176,12 @@ class MusicXML {
   }
 
   void recalculateAbsoluteTime() {
-    voiceDuration = {};
-    voiceAbsoluteDuration = {};
+    duration = 0.0;
+    absoluteDuration = 0.0;
 
     for(final event in events) {
-      final duration = getGlobalDurationFromEvent(event);
-      final absoluteDuration = getGlobalAbsoluteDurationFromEvent(event);
-
       event.time = duration;
       event.absoluteTime = absoluteDuration;
-
-      setGlobalDurationFromEvent(event,duration + event.duration);
-      setGlobalAbsoluteDurationFromEvent(event,absoluteDuration + event.absoluteDuration);
     }
   }
 
