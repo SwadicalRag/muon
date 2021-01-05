@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:muon/controllers/muonvoice.dart';
 import 'package:muon/editor.dart';
+import 'package:muon/logic/helpers.dart';
 
 class MuonVoiceControls extends StatelessWidget {
   const MuonVoiceControls({
@@ -63,7 +64,7 @@ class MuonVoiceControls extends StatelessWidget {
             itemBuilder: (BuildContext context) {
               final List<PopupMenuItem<String>> items = [];
 
-              final models = getAllVoiceModels();
+              final models = MuonHelpers.getAllVoiceModels();
 
               for(final modelName in models) {
                 items.add(
