@@ -46,62 +46,60 @@ class MuonEditor extends StatefulWidget {
 }
 
 class _MuonEditorState extends State<MuonEditor> {
-  bool _firstTimeSetupDone = false;
+  static bool _firstTimeRunning = true;
 
   void _welcomeScreen() {
-    Timer(Duration(milliseconds: 1),() {
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false, // user must tap button!
-        builder: (BuildContext context) {
-          return Scaffold(
-            body: AlertDialog(
-              title: Center(child: Text("Welcome to Muon!")),
-              content: SingleChildScrollView(
-                child: ListBody(
-                  children: <Widget>[
-                    RaisedButton(
-                      child: Text("Create New Project"),
-                      onPressed: () {
-                        Navigator.of(context, rootNavigator: true).pop();
-                        _createNewProject();
-                      }
-                    ),
-                    SizedBox(height: 10),
-                    RaisedButton(
-                      child: Text("Open Project"),
-                      onPressed: () {
-                        Navigator.of(context, rootNavigator: true).pop();
-                        _openProject(context);
-                      }
-                    )
-                  ],
-                ),
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false, // user must tap button!
+      builder: (BuildContext context) {
+        return Scaffold(
+          body: AlertDialog(
+            title: Center(child: Text("Welcome to Muon!")),
+            content: SingleChildScrollView(
+              child: ListBody(
+                children: <Widget>[
+                  RaisedButton(
+                    child: Text("Create New Project"),
+                    onPressed: () {
+                      Navigator.of(context, rootNavigator: true).pop();
+                      _createNewProject();
+                    }
+                  ),
+                  SizedBox(height: 10),
+                  RaisedButton(
+                    child: Text("Open Project"),
+                    onPressed: () {
+                      Navigator.of(context, rootNavigator: true).pop();
+                      _openProject(context);
+                    }
+                  )
+                ],
               ),
-              actions: <Widget>[
-                TextButton(
-                  child: Text("About"),
-                  onPressed: () {
-                    showAboutDialog(
-                      context: context,
-                      applicationVersion: "0.0.1",
-                      applicationName: "Muon",
-                      applicationLegalese: "copyright (c) swadical 2021",
-                    );
-                  },
-                ),
-                OutlineButton(
-                  child: Text("Quit"),
-                  onPressed: () {
-                    exit(0);
-                  },
-                ),
-              ],
             ),
-          );
-        },
-      );
-    });
+            actions: <Widget>[
+              TextButton(
+                child: Text("About"),
+                onPressed: () {
+                  showAboutDialog(
+                    context: context,
+                    applicationVersion: "0.0.1",
+                    applicationName: "Muon",
+                    applicationLegalese: "copyright (c) swadical 2021",
+                  );
+                },
+              ),
+              OutlineButton(
+                child: Text("Quit"),
+                onPressed: () {
+                  exit(0);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _openProject(BuildContext context) {
@@ -265,103 +263,116 @@ class _MuonEditorState extends State<MuonEditor> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  void _performFirstTimeSetup() {
     final settings = getMuonSettings();
 
-    currentProject.setupPlaybackTimers();
-
-    if((settings.neutrinoDir == "") && !_firstTimeSetupDone) {
-      // perform first time setup
-
-      _firstTimeSetupDone = true;
-
-      Timer(Duration(milliseconds: 500),() {
-        showDialog<void>(
-          context: context,
-          barrierDismissible: false, // user must tap button!
-          builder: (BuildContext subContext) {
-            return Scaffold(
-              body: AlertDialog(
-                title: Text("Hello and welcome!"),
-                content: SingleChildScrollView(
-                  child: ListBody(
-                    children: <Widget>[
-                      Text("Before you start using Muon, we need to do some housekeeping!"),
-                      SizedBox(height: 15,),
-                      RaisedButton(
-                        child: Text("Choose Neutrino SDK Folder Location"),
-                        onPressed: () {
-                          FileSelectorPlatform.instance.getDirectoryPath(
-                            confirmButtonText: "Open Neutrino SDK",
-                          )
-                          .catchError((err) {print("internal file browser error: " + err.toString());}) // oh wow i am so naughty
-                          .then((value) {
-                            if(value != null) {
-                              if(Directory(value).existsSync()) {
-                                if(File(value + "/bin/NEUTRINO.exe").existsSync() || File(value + "/bin/NEUTRINO").existsSync()) {
-                                  settings.neutrinoDir = value;
-                                  settings.save();
-                                  return;
-                                }
-                              }
-
-                              settings.neutrinoDir = "";
-                              settings.save();
-
-                              ScaffoldMessenger.of(subContext).hideCurrentSnackBar();
-                              ScaffoldMessenger.of(subContext).showSnackBar(
-                                SnackBar(backgroundColor: Theme.of(subContext).errorColor,
-                                  content: new Text("Error: That doesn't seem like a valid NEUTRINO directory!"),
-                                  duration: new Duration(seconds: 5),
-                                )
-                              );
-                            }
-                          });
-                        },
-                      ),
-                      SizedBox(height: 15,),
-                      SwitchListTile(
-                        title: Text("Please burn my eyes"),
-                        secondary: Icon(Icons.lightbulb_outline),
-                        value: !darkMode.value,
-                        onChanged: (value) {
-                          darkMode.value = !value;
-                        },
-                      )
-                    ],
-                  ),
-                ),
-                actions: <Widget>[
-                  TextButton(
-                    child: Text("I'm all set!"),
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false, // user must tap button!
+      builder: (BuildContext subContext) {
+        return Scaffold(
+          body: AlertDialog(
+            title: Text("Hello and welcome!"),
+            content: SingleChildScrollView(
+              child: ListBody(
+                children: <Widget>[
+                  Text("Before you start using Muon, we need to do some housekeeping!"),
+                  SizedBox(height: 15,),
+                  RaisedButton(
+                    child: Text("Choose Neutrino SDK Folder Location"),
                     onPressed: () {
-                      if(settings.neutrinoDir == "") {
-                        ScaffoldMessenger.of(subContext).hideCurrentSnackBar();
-                        ScaffoldMessenger.of(subContext).showSnackBar(
-                          SnackBar(backgroundColor: Theme.of(subContext).errorColor,
-                            content: new Text("Error: Please choose a valid directory for the NEUTRINO library!"),
-                            duration: new Duration(seconds: 5),
-                          )
-                        );
-                      }
-                      else {
-                        Navigator.of(subContext, rootNavigator: true).pop();
-                        _welcomeScreen();
-                      }
+                      FileSelectorPlatform.instance.getDirectoryPath(
+                        confirmButtonText: "Open Neutrino SDK",
+                      )
+                      .catchError((err) {print("internal file browser error: " + err.toString());}) // oh wow i am so naughty
+                      .then((value) {
+                        if(value != null) {
+                          if(Directory(value).existsSync()) {
+                            if(File(value + "/bin/NEUTRINO.exe").existsSync() || File(value + "/bin/NEUTRINO").existsSync()) {
+                              settings.neutrinoDir = value;
+                              settings.save();
+                              return;
+                            }
+                          }
+
+                          settings.neutrinoDir = "";
+                          settings.save();
+
+                          ScaffoldMessenger.of(subContext).hideCurrentSnackBar();
+                          ScaffoldMessenger.of(subContext).showSnackBar(
+                            SnackBar(backgroundColor: Theme.of(subContext).errorColor,
+                              content: new Text("Error: That doesn't seem like a valid NEUTRINO directory!"),
+                              duration: new Duration(seconds: 5),
+                            )
+                          );
+                        }
+                      });
                     },
                   ),
+                  SizedBox(height: 15,),
+                  SwitchListTile(
+                    title: Text("Please burn my eyes"),
+                    secondary: Icon(Icons.lightbulb_outline),
+                    value: !darkMode.value,
+                    onChanged: (value) {
+                      darkMode.value = !value;
+                    },
+                  )
                 ],
               ),
-            );
-          },
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: Text("I'm all set!"),
+                onPressed: () {
+                  if(settings.neutrinoDir == "") {
+                    ScaffoldMessenger.of(subContext).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(subContext).showSnackBar(
+                      SnackBar(backgroundColor: Theme.of(subContext).errorColor,
+                        content: new Text("Error: Please choose a valid directory for the NEUTRINO library!"),
+                        duration: new Duration(seconds: 5),
+                      )
+                    );
+                  }
+                  else {
+                    Navigator.of(subContext, rootNavigator: true).pop();
+                    _welcomeScreen();
+                  }
+                },
+              ),
+            ],
+          ),
         );
+      },
+    );
+  }
+
+  void _onFirstRun(BuildContext context) {
+    final settings = getMuonSettings();
+
+    if(settings.neutrinoDir != "") {
+      // We have already performed first time set-up!
+
+      Timer(Duration(milliseconds: 1),() {
+        _welcomeScreen();
       });
     }
-    else if((settings.neutrinoDir != "") && !_firstTimeSetupDone) {
-      _firstTimeSetupDone = true;
+    else {
+      // no neutrino library, so let's perform first time set-up!
 
-      _welcomeScreen();
+      Timer(Duration(milliseconds: 1),() {
+        _performFirstTimeSetup();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    currentProject.setupPlaybackTimers();
+
+    if(_firstTimeRunning) {
+      _firstTimeRunning = false;
+      _onFirstRun(context);
     }
 
     final themeData = Theme.of(context);
