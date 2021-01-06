@@ -562,6 +562,27 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.1.0-nullsafety.3"
+  synaps:
+    dependency: transitive
+    description:
+      path: "../synaps"
+      relative: true
+    source: path
+    version: "0.0.0"
+  synaps_flutter:
+    dependency: "direct main"
+    description:
+      path: "../synaps/flutter"
+      relative: true
+    source: path
+    version: "0.0.1"
+  synaps_generator:
+    dependency: "direct main"
+    description:
+      path: "../synaps/generator"
+      relative: true
+    source: path
+    version: "0.0.0"
   sync_http:
     dependency: transitive
     description:

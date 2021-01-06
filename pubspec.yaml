@@ -51,6 +51,10 @@ dependencies:
   path: ^1.7.0
   flutter_audio_desktop:
     path: ../flutter_audio_desktop
+  synaps_flutter:
+    path: ../synaps/flutter
+  synaps_generator:
+    path: ../synaps/generator
 
 dev_dependencies:
   flutter_test:

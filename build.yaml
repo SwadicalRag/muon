@@ -1,0 +1,7 @@
+targets:
+  $default:
+    builders:
+      synaps_generator:
+        enabled: True
+        generate_for:
+          - lib/*
