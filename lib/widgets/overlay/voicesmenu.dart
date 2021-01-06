@@ -1,7 +1,7 @@
 
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import "package:synaps_flutter/synaps_flutter.dart";
 import 'package:muon/controllers/muonvoice.dart';
 import 'package:muon/editor.dart';
 import 'package:muon/logic/musicxml.dart';
@@ -21,7 +21,7 @@ class MuonVoicesMenu extends StatelessWidget {
         children: [
           Expanded(
             child: Scrollbar(
-              child: Obx(() => ListView.builder(
+              child: Rx(() => ListView.builder(
                 itemCount: currentProject.voices.length,
                 itemBuilder: (context, index) {
                   final voice = currentProject.voices[index];
@@ -46,7 +46,7 @@ class MuonVoicesMenu extends StatelessWidget {
                       icon: const Icon(Icons.add),
                       tooltip: "Add voice",
                       onPressed: () {
-                        final newVoice = MuonVoiceController();
+                        final newVoice = MuonVoiceController().ctx();
                         newVoice.project = currentProject;
                         currentProject.voices.add(newVoice);
                       },

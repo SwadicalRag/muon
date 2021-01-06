@@ -1,26 +1,34 @@
-import "package:get/get.dart";
+import "package:synaps_flutter/synaps_flutter.dart";
 import "package:muon/controllers/muonvoice.dart";
 import "package:muon/serializable/muon.dart";
 
-class MuonNoteController extends GetxController {
+part "muonnote.g.dart";
+
+@Controller()
+class MuonNoteController with WeakEqualityController {
   MuonVoiceController voice;
 
   /// The alphabetical value of this note
   /// `/[A-G]#?/`
-  final note = "C".obs;
+  @Observable()
+  String note = "C";
 
   /// The octave of this note
-  final octave = 4.obs;
+  @Observable()
+  int octave = 4;
 
   /// Any lyrics attached to this note
   /// (can be an empty string!)
-  final lyric = "".obs;
+  @Observable()
+  String lyric = "";
 
   /// The time at which this note starts
-  final startAtTime = 0.obs;
+  @Observable()
+  int startAtTime = 0;
 
   /// The duration of this note
-  final duration = 0.obs;
+  @Observable()
+  int duration = 0;
 
   /// Adds `deltaSemitones` to this note
   /// 
@@ -29,31 +37,31 @@ class MuonNoteController extends GetxController {
   void addSemitones(int deltaSemitones) {
     final midiNotes = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 
-    final currentNoteID = midiNotes.indexOf(this.note.value);
+    final currentNoteID = midiNotes.indexOf(this.note);
     final deltaOctave = ((deltaSemitones + currentNoteID) / 12).floor();
     final fixedDeltaSemitones = deltaSemitones - deltaOctave * 12;
     
-    note.value = midiNotes[currentNoteID + fixedDeltaSemitones];
-    octave.value = octave.value + deltaOctave;
+    note = midiNotes[currentNoteID + fixedDeltaSemitones];
+    octave = octave + deltaOctave;
   }
 
   MuonNote toSerializable() {
     final out = MuonNote();
-    out.note = this.note.value;
-    out.octave = this.octave.value;
-    out.lyric = this.lyric.value;
-    out.startAtTime = this.startAtTime.value;
-    out.duration = this.duration.value;
+    out.note = this.note;
+    out.octave = this.octave;
+    out.lyric = this.lyric;
+    out.startAtTime = this.startAtTime;
+    out.duration = this.duration;
     return out;
   }
 
   static MuonNoteController fromSerializable(MuonNote obj) {
-    final out = MuonNoteController();
-    out.note.value = obj.note;
-    out.octave.value = obj.octave;
-    out.lyric.value = obj.lyric;
-    out.startAtTime.value = obj.startAtTime;
-    out.duration.value = obj.duration;
+    final out = MuonNoteController().ctx();
+    out.note = obj.note;
+    out.octave = obj.octave;
+    out.lyric = obj.lyric;
+    out.startAtTime = obj.startAtTime;
+    out.duration = obj.duration;
     return out;
   }
 }

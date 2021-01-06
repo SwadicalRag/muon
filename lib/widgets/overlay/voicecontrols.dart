@@ -1,6 +1,6 @@
 
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import "package:synaps_flutter/synaps_flutter.dart";
 import 'package:muon/controllers/muonvoice.dart';
 import 'package:muon/editor.dart';
 import 'package:muon/logic/helpers.dart';
@@ -40,26 +40,26 @@ class MuonVoiceControls extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.centerLeft,
-            child: Obx(() => Text(
-              "Voice " + (currentProject.voices.indexOf(voice) + 1).toString() + " (" + voice.modelName.value + ")",
+            child: Rx(() => Text(
+              "Voice " + (currentProject.voices.indexOf(voice) + 1).toString() + " (" + voice.modelName + ")",
             ))
           ),
           Expanded(
             child: Container(),
           ),
-          Obx(() => IconButton(
+          Rx(() => IconButton(
             icon: const Icon(Icons.center_focus_strong),
             disabledColor: Colors.green.withOpacity(0.9),
             tooltip: "Select voice",
-            onPressed: currentProject.currentVoiceID.value == currentProject.voices.indexOf(voice) ? null : () {
-              currentProject.currentVoiceID.value = currentProject.voices.indexOf(voice);
+            onPressed: currentProject.currentVoiceID == currentProject.voices.indexOf(voice) ? null : () {
+              currentProject.currentVoiceID = currentProject.voices.indexOf(voice);
             },
           )),
           PopupMenuButton(
             icon: const Icon(Icons.speaker_notes),
             tooltip: "Change voice model",
             onSelected: (String result) {
-              voice.modelName.value = result;
+              voice.modelName = result;
             },
             itemBuilder: (BuildContext context) {
               final List<PopupMenuItem<String>> items = [];

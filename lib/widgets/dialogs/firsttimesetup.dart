@@ -55,9 +55,9 @@ class MuonFirstTimeSetupDialog extends StatelessWidget {
               SwitchListTile(
                 title: Text("Please burn my eyes"),
                 secondary: Icon(Icons.lightbulb_outline),
-                value: !darkMode.value,
+                value: !appSettings.darkMode,
                 onChanged: (value) {
-                  darkMode.value = !value;
+                  appSettings.darkMode = !value;
                 },
               )
             ],

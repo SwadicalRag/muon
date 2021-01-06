@@ -577,7 +577,7 @@ packages:
     source: path
     version: "0.0.1"
   synaps_generator:
-    dependency: "direct main"
+    dependency: "direct dev"
     description:
       path: "../synaps/generator"
       relative: true

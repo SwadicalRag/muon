@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import "package:synaps_flutter/synaps_flutter.dart";
 import 'package:muon/editor.dart';
 import 'package:muon/main.dart';
 
@@ -22,23 +22,23 @@ class MuonAppBar extends StatelessWidget implements PreferredSizeWidget {
           icon: const Icon(Icons.exposure_plus_1),
           tooltip: "Add subdivision",
           onPressed: () {
-            currentProject.setSubdivision(currentProject.currentSubdivision.value + 1);
+            currentProject.setSubdivision(currentProject.currentSubdivision + 1);
           },
         ),
         IconButton(
           icon: const Icon(Icons.exposure_minus_1),
           tooltip: "Subtract subdivision",
           onPressed: () {
-            currentProject.setSubdivision(max(1,currentProject.currentSubdivision.value - 1));
+            currentProject.setSubdivision(max(1,currentProject.currentSubdivision - 1));
           },
         ),
         SizedBox(width: 40,),
-        Obx(() => IconButton(
+        Rx(() => IconButton(
           icon: const Icon(Icons.play_arrow),
           tooltip: "Play",
-          color: currentProject.internalStatus.value == "compiling" ? 
+          color: currentProject.internalStatus == "compiling" ? 
             Colors.yellow : 
-              currentProject.internalStatus.value == "playing" ?
+              currentProject.internalStatus == "playing" ?
                 Colors.green :
                 Colors.white,
           onPressed: () {
@@ -71,9 +71,9 @@ class MuonAppBar extends StatelessWidget implements PreferredSizeWidget {
             }
           },
         ),
-        Obx(() => IconButton(
+        Rx(() => IconButton(
           icon: const Icon(Icons.computer),
-          color: currentProject.internalStatus.value == "compiling_nsf" ? 
+          color: currentProject.internalStatus == "compiling_nsf" ? 
             Colors.yellow : Colors.white,
           tooltip: "Render with NSF",
           onPressed: () {
@@ -81,11 +81,11 @@ class MuonAppBar extends StatelessWidget implements PreferredSizeWidget {
           },
         )),
         SizedBox(width: 40,),
-        Obx(() => IconButton(
-            icon: darkMode.value ? const Icon(Icons.lightbulb) : const Icon(Icons.lightbulb_outline),
-            tooltip: darkMode.value ? "Lights on" : "Lights out",
+        Rx(() => IconButton(
+            icon: appSettings.darkMode ? const Icon(Icons.lightbulb) : const Icon(Icons.lightbulb_outline),
+            tooltip: appSettings.darkMode ? "Lights on" : "Lights out",
             onPressed: () {
-              darkMode.value = !darkMode.value;
+              appSettings.darkMode = !appSettings.darkMode;
             },
           ),
         ),

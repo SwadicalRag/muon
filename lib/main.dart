@@ -1,22 +1,16 @@
 import "dart:io";
-import "package:get/get.dart";
 
 import "package:flutter/material.dart";
+import 'package:muon/controllers/settings.dart';
 import "package:muon/licenses.dart";
 import "package:muon/editor.dart";
-import "package:muon/serializable/settings.dart";
+import 'package:synaps_flutter/synaps_flutter.dart';
 
 import "package:window_size/window_size.dart";
 
 /// Light/Dark mode implemented as a reactive boolean
 /// This happened to be the easiest way to implement this.
-final darkMode = getMuonSettings().darkMode.obs..listen((bool newVal) {
-  final settings = getMuonSettings();
-
-  settings.darkMode = newVal;
-
-  settings.save();
-});
+final appSettings = MuonSettingsController().ctx();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,10 +27,10 @@ void main() {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Obx(() => MaterialApp(
+    return Rx(() => MaterialApp(
       debugShowCheckedModeBanner: false,
       title: "Muon",
-      themeMode: darkMode.value ? ThemeMode.dark : ThemeMode.light,
+      themeMode: appSettings.darkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
         primarySwatch: Colors.purple,
         brightness: Brightness.light,

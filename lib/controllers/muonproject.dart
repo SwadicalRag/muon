@@ -1,6 +1,6 @@
 import 'dart:async';
 import "dart:io";
-import "package:get/get.dart";
+import "package:synaps_flutter/synaps_flutter.dart";
 import "package:dart_midi/dart_midi.dart";
 import "package:muon/controllers/muonnote.dart";
 import "package:muon/controllers/muonvoice.dart";
@@ -8,44 +8,56 @@ import "package:muon/serializable/muon.dart";
 import "package:muon/logic/musicxml.dart";
 import "package:path/path.dart" as p;
 
+part "muonproject.g.dart";
+
 /// 
 /// The main class where the muon project is stored.
 /// Has reactive getters/setters with the aid of GetX
 /// 
-class MuonProjectController extends GetxController {
+@Controller()
+class MuonProjectController with WeakEqualityController {
   /// The directory path of this project
-  final projectDir = "".obs;
+  @Observable()
+  String projectDir = "";
 
   /// The file name of this project (with file extension)
-  final projectFileName = "project.json".obs;
+  @Observable()
+  String projectFileName = "project.json";
 
   /// The file name of this project (without file extension)
-  String get projectFileNameNoExt => p.basenameWithoutExtension(projectFileName.value);
+  String get projectFileNameNoExt => p.basenameWithoutExtension(projectFileName);
 
   /// Beats per minute
-  final bpm = 120.0.obs;
+  @Observable()
+  double bpm = 120.0;
   
   /// Internal time units per beat (for internal subdivision)
-  final timeUnitsPerBeat = 1.obs;
+  @Observable()
+  int timeUnitsPerBeat = 1;
 
   /// Beats per measure (numerator)
-  final beatsPerMeasure = 4.obs;
+  @Observable()
+  int beatsPerMeasure = 4;
 
   /// Beat value (denominator), is a power of two
   /// 4 = quarter notes, 8 = eighth notes, etc.
-  final beatValue = 4.obs;
+  @Observable()
+  int beatValue = 4;
 
   /// The list of all of the voices in this proejct
-  final voices = RxList<MuonVoiceController>([]);
+  @Observable()
+  List<MuonVoiceController> voices = [];
 
   /// The index of the voice being currently edited/selected
-  final currentVoiceID = 0.obs;
+  @Observable()
+  int currentVoiceID = 0;
 
   /// A list of all selected notes in this project (i.e. control A/mouse select)
-  final selectedNotes = Map<MuonNoteController,bool>().obs;
+  final selectedNotes = Map<MuonNoteController,bool>();
 
   /// Current time value of where the playhead is in beats
-  final playheadTime = 0.0.obs;
+  @Observable()
+  double playheadTime = 0.0;
 
   /// Internally used for Control+C/X/V
   List<MuonNote> copiedNotes = [];
@@ -55,23 +67,21 @@ class MuonProjectController extends GetxController {
 
   /// Can be "idle" | "compiling" | "compiling_nsf" | "playing"
   /// Used by the UI to figure out if certain actions are valid
-  final internalStatus = "idle".obs;
+  @Observable()
+  String internalStatus = "idle";
   
   /// Current number of visible subdivisions
-  final currentSubdivision = 1.obs;
+  int currentSubdivision = 1;
 
   /// Internal timer registered by this class to track the playhead
   /// TODO: this should be removed once FFI is complete
   Timer playbackTimer;
 
-  @override
   void dispose() {
     if(playbackTimer != null) {
       playbackTimer.cancel();
       playbackTimer = null;
     }
-    
-    super.dispose();
   }
 
   // MISCELLANEOUS METHODS
@@ -90,17 +100,17 @@ class MuonProjectController extends GetxController {
 
   /// Returns the number of milliseconds until the first phoneme label
   int getLabelMillisecondOffset() {
-    return (this.beatsPerMeasure / (this.bpm.value / 60) * 1000 * (4 / this.beatValue.value)).round();
+    return (this.beatsPerMeasure / (this.bpm / 60) * 1000 * (4 / this.beatValue)).round();
   }
 
   /// updates the contents of this controller with the input controller
   void updateWith(MuonProjectController controller) {
-    this.projectDir.value = controller.projectDir.value;
-    this.bpm.value = controller.bpm.value;
-    this.timeUnitsPerBeat.value = controller.timeUnitsPerBeat.value;
-    this.beatsPerMeasure.value = controller.beatsPerMeasure.value;
-    this.beatValue.value = controller.beatValue.value;
-    this.currentSubdivision.value = controller.currentSubdivision.value;
+    this.projectDir = controller.projectDir;
+    this.bpm = controller.bpm;
+    this.timeUnitsPerBeat = controller.timeUnitsPerBeat;
+    this.beatsPerMeasure = controller.beatsPerMeasure;
+    this.beatValue = controller.beatValue;
+    this.currentSubdivision = controller.currentSubdivision;
 
     this.voices.clear();
     for(final voice in controller.voices) {this.addVoice(voice);}
@@ -116,21 +126,21 @@ class MuonProjectController extends GetxController {
     // It is my hope that I can get rid of these ugly async calls
     // once we move to FFI for managing audio
     playbackTimer = Timer.periodic(Duration(milliseconds: 1),(Timer t) async {
-      if(this.voices.length > this.currentVoiceID.value) {
-        MuonVoiceController voice = this.voices[this.currentVoiceID.value];
+      if(this.voices.length > this.currentVoiceID) {
+        MuonVoiceController voice = this.voices[this.currentVoiceID];
         if(voice.audioPlayer != null) {
-          if(this.internalStatus.value == "playing") {
+          if(this.internalStatus == "playing") {
             dynamic posDur = await voice.audioPlayer.getPosition();
             if(posDur is Duration) {
               int curPos = posDur.inMilliseconds;
 
               if(curPos >= voice.audioPlayerDuration) {
-                this.playheadTime.value = 0;
-                this.internalStatus.value = "idle";
+                this.playheadTime = 0;
+                this.internalStatus = "idle";
               }
               else {
                 int voicePos = curPos - this.getLabelMillisecondOffset();
-                this.playheadTime.value = voicePos / 1000 * (this.bpm / 60);
+                this.playheadTime = voicePos / 1000 * (this.bpm / 60);
               }
             }
           }
@@ -142,42 +152,42 @@ class MuonProjectController extends GetxController {
   // DEFAULT PROJECT
 
   static MuonProjectController defaultProject() {
-    final out = MuonProjectController();
+    final out = MuonProjectController().ctx();
 
-    out.projectDir.value = "startup";
+    out.projectDir = "startup";
 
-    final baseVoice = MuonVoiceController();
+    final baseVoice = MuonVoiceController().ctx();
     baseVoice.addNote(
       MuonNoteController()
-        ..startAtTime.value = 0
-        ..duration.value = 1
-        ..note.value = "C"
-        ..octave.value = 4
-        ..lyric.value = "ら"
+        ..startAtTime = 0
+        ..duration = 1
+        ..note = "C"
+        ..octave = 4
+        ..lyric = "ら"
     );
     baseVoice.addNote(
       MuonNoteController()
-        ..startAtTime.value = 1
-        ..duration.value = 1
-        ..note.value = "D"
-        ..octave.value = 4
-        ..lyric.value = "ら"
+        ..startAtTime = 1
+        ..duration = 1
+        ..note = "D"
+        ..octave = 4
+        ..lyric = "ら"
     );
     baseVoice.addNote(
       MuonNoteController()
-        ..startAtTime.value = 2
-        ..duration.value = 1
-        ..note.value = "E"
-        ..octave.value = 4
-        ..lyric.value = "ら"
+        ..startAtTime = 2
+        ..duration = 1
+        ..note = "E"
+        ..octave = 4
+        ..lyric = "ら"
     );
     baseVoice.addNote(
       MuonNoteController()
-        ..startAtTime.value = 3
-        ..duration.value = 1
-        ..note.value = "F"
-        ..octave.value = 4
-        ..lyric.value = "ら"
+        ..startAtTime = 3
+        ..duration = 1
+        ..note = "F"
+        ..octave = 4
+        ..lyric = "ら"
     );
     out.addVoice(baseVoice);
 
@@ -190,8 +200,8 @@ class MuonProjectController extends GetxController {
 
   void setSubdivision(int subdivision) {
     factorTimeUnitsPerBeat();
-    setTimeUnitsPerBeat(timeUnitsPerBeat.value * subdivision);
-    currentSubdivision.value = subdivision;
+    setTimeUnitsPerBeat(timeUnitsPerBeat * subdivision);
+    currentSubdivision = subdivision;
   }
 
   void factorTimeUnitsPerBeat() {
@@ -221,7 +231,7 @@ class MuonProjectController extends GetxController {
     var gcdTimeValue = gcdArray(allTimeValues);
     var newTimeUnitsPerBeat = (timeUnitsPerBeat / gcdTimeValue).floor();
 
-    if(newTimeUnitsPerBeat != timeUnitsPerBeat.value) {
+    if(newTimeUnitsPerBeat != timeUnitsPerBeat) {
       setTimeUnitsPerBeat(newTimeUnitsPerBeat);
     }
   }
@@ -231,14 +241,14 @@ class MuonProjectController extends GetxController {
 
     for(final voice in voices) {
       for(final note in voice.notes) {
-        note.startAtTime.value = (note.startAtTime / timeUnitsPerBeat.value * newTimeUnitsPerBeat).round();
-        note.duration.value = (note.duration / timeUnitsPerBeat.value * newTimeUnitsPerBeat).round();
+        note.startAtTime = (note.startAtTime / timeUnitsPerBeat * newTimeUnitsPerBeat).round();
+        note.duration = (note.duration / timeUnitsPerBeat * newTimeUnitsPerBeat).round();
       }
     }
 
-    timeUnitsPerBeat.value = newTimeUnitsPerBeat;
+    timeUnitsPerBeat = newTimeUnitsPerBeat;
 
-    currentSubdivision.value = 1;
+    currentSubdivision = 1;
   }
 
   // IMPORTING/EXPORTING VOICES
@@ -254,8 +264,8 @@ class MuonProjectController extends GetxController {
         var voice = MuonVoiceController()..project = this;
 
         int timeUnitMulFactor = 1;
-        if(this.timeUnitsPerBeat.value != midi.header.ticksPerBeat) {
-          timeUnitMulFactor = this.timeUnitsPerBeat.value;
+        if(this.timeUnitsPerBeat != midi.header.ticksPerBeat) {
+          timeUnitMulFactor = this.timeUnitsPerBeat;
           this.setTimeUnitsPerBeat(this.timeUnitsPerBeat * midi.header.ticksPerBeat);
         }
 
@@ -272,7 +282,7 @@ class MuonProjectController extends GetxController {
               if(importTimeMetadata) {
                 SetTempoEvent tempoEvent = midiEvent;
 
-                this.bpm.value = 60 / (tempoEvent.microsecondsPerBeat / 1000);
+                this.bpm = 60 / (tempoEvent.microsecondsPerBeat / 1000);
               }
               break;
             }
@@ -280,19 +290,19 @@ class MuonProjectController extends GetxController {
               if(importTimeMetadata) {
                 TimeSignatureEvent timeSigEvent = midiEvent;
 
-                this.beatsPerMeasure.value = timeSigEvent.numerator;
-                this.beatValue.value = timeSigEvent.denominator;
+                this.beatsPerMeasure = timeSigEvent.numerator;
+                this.beatValue = timeSigEvent.denominator;
               }
               break;
             }
             case "noteOn": {
               if(lastNoteOn != null) {
-                var note = MuonNoteController();
-                note.note.value = midiNotes[lastNoteOn.noteNumber % 12];
-                note.octave.value = (lastNoteOn.noteNumber / 12).floor() - 1;
-                note.startAtTime.value = lastNoteOnTime.toInt() * timeUnitMulFactor;
-                note.duration.value = (curTime - lastNoteOnTime) * timeUnitMulFactor;
-                note.lyric.value = "";
+                var note = MuonNoteController().ctx();
+                note.note = midiNotes[lastNoteOn.noteNumber % 12];
+                note.octave = (lastNoteOn.noteNumber / 12).floor() - 1;
+                note.startAtTime = lastNoteOnTime.toInt() * timeUnitMulFactor;
+                note.duration = (curTime - lastNoteOnTime) * timeUnitMulFactor;
+                note.lyric = "";
                 voice.addNote(note);
 
                 lastNoteOn = null;
@@ -308,12 +318,12 @@ class MuonProjectController extends GetxController {
             case "noteOff": {
               if(lastNoteOn != null) {
                 if(midiEvent.type == "endOfTrack" || ((midiEvent as NoteOffEvent).noteNumber == lastNoteOn.noteNumber)) {
-                  var note = MuonNoteController();
-                  note.note.value = midiNotes[lastNoteOn.noteNumber % 12];
-                  note.octave.value = (lastNoteOn.noteNumber / 12).floor() - 1;
-                  note.startAtTime.value = lastNoteOnTime.toInt() * timeUnitMulFactor;
-                  note.duration.value = (curTime - lastNoteOnTime) * timeUnitMulFactor;
-                  note.lyric.value = "";
+                  var note = MuonNoteController().ctx();
+                  note.note = midiNotes[lastNoteOn.noteNumber % 12];
+                  note.octave = (lastNoteOn.noteNumber / 12).floor() - 1;
+                  note.startAtTime = lastNoteOnTime.toInt() * timeUnitMulFactor;
+                  note.duration = (curTime - lastNoteOnTime) * timeUnitMulFactor;
+                  note.lyric = "";
                   voice.addNote(note);
 
                   lastNoteOn = null;
@@ -348,28 +358,28 @@ class MuonProjectController extends GetxController {
     for(final event in musicXML.events) {
       if(event is MusicXMLEventTempo) {
         if(importTimeMetadata) {
-          this.bpm.value = event.tempo;
+          this.bpm = event.tempo;
         }
       }
       else if(event is MusicXMLEventDivision) {
-        if(this.timeUnitsPerBeat.value != event.divisions) {
-          timeUnitMulFactor = this.timeUnitsPerBeat.value;
+        if(this.timeUnitsPerBeat != event.divisions) {
+          timeUnitMulFactor = this.timeUnitsPerBeat;
           this.setTimeUnitsPerBeat(this.timeUnitsPerBeat * event.divisions);
         }
       }
       else if(event is MusicXMLEventTimeSignature) {
         if(importTimeMetadata) {
-          this.beatsPerMeasure.value = event.beats;
-          this.beatValue.value = event.beatType;
+          this.beatsPerMeasure = event.beats;
+          this.beatValue = event.beatType;
         }
       }
       else if(event is MusicXMLEventNote) {
-        var note = MuonNoteController();
-        note.note.value = event.pitch.note;
-        note.octave.value = event.pitch.octave;
-        note.startAtTime.value = event.time.toInt() * timeUnitMulFactor;
-        note.duration.value = event.duration.toInt() * timeUnitMulFactor;
-        note.lyric.value = event.lyric;
+        var note = MuonNoteController().ctx();
+        note.note = event.pitch.note;
+        note.octave = event.pitch.octave;
+        note.startAtTime = event.time.toInt() * timeUnitMulFactor;
+        note.duration = event.duration.toInt() * timeUnitMulFactor;
+        note.lyric = event.lyric;
         voice.addNote(note);
       }
     }
@@ -385,43 +395,43 @@ class MuonProjectController extends GetxController {
     MusicXML musicXML = MusicXML();
 
     var timeSigEvent = MusicXMLEventTimeSignature(musicXML);
-    timeSigEvent.beats = this.beatsPerMeasure.value;
-    timeSigEvent.beatType = this.beatValue.value;
+    timeSigEvent.beats = this.beatsPerMeasure;
+    timeSigEvent.beatType = this.beatValue;
     musicXML.addEvent(timeSigEvent);
 
     var divEvent = MusicXMLEventDivision(musicXML);
-    divEvent.divisions = this.timeUnitsPerBeat.value;
+    divEvent.divisions = this.timeUnitsPerBeat;
     musicXML.addEvent(divEvent);
 
     var tempoEvent = MusicXMLEventTempo(musicXML);
-    tempoEvent.tempo = this.bpm.value;
+    tempoEvent.tempo = this.bpm;
     musicXML.addEvent(tempoEvent);
 
     voice.sortNotesByTime();
 
-    musicXML.rest((this.beatsPerMeasure.value * divEvent.divisions).toDouble(),1);
+    musicXML.rest((this.beatsPerMeasure * divEvent.divisions).toDouble(),1);
     var lastNoteEndTime = 0;
     for(final note in voice.notes) {
       if(note.startAtTime > lastNoteEndTime) {
-        musicXML.rest((note.startAtTime.value - lastNoteEndTime).toDouble(),1);
+        musicXML.rest((note.startAtTime - lastNoteEndTime).toDouble(),1);
       }
 
       var noteEvent = MusicXMLEventNote(musicXML);
 
       noteEvent.voice = 1;
       noteEvent.duration = note.duration.toDouble();
-      noteEvent.lyric = note.lyric.value;
+      noteEvent.lyric = note.lyric;
 
       var pitch = MusicXMLPitch();
-      pitch.note = note.note.value;
-      pitch.octave = note.octave.value;
+      pitch.note = note.note;
+      pitch.octave = note.octave;
       noteEvent.pitch = pitch;
 
       musicXML.addEvent(noteEvent);
 
-      lastNoteEndTime = note.startAtTime.value + note.duration.value;
+      lastNoteEndTime = note.startAtTime + note.duration;
     }
-    musicXML.rest((this.beatsPerMeasure.value * divEvent.divisions).toDouble(),1);
+    musicXML.rest((this.beatsPerMeasure * divEvent.divisions).toDouble(),1);
 
     return musicXML;
   }
@@ -447,12 +457,12 @@ class MuonProjectController extends GetxController {
 
   MuonProject toSerializable() {
     final out = MuonProject();
-    out.projectDir = this.projectDir.value;
-    out.projectFileName = this.projectFileName.value;
-    out.bpm = this.bpm.value;
-    out.timeUnitsPerBeat = this.timeUnitsPerBeat.value;
-    out.beatsPerMeasure = this.beatsPerMeasure.value;
-    out.beatValue = this.beatValue.value;
+    out.projectDir = this.projectDir;
+    out.projectFileName = this.projectFileName;
+    out.bpm = this.bpm;
+    out.timeUnitsPerBeat = this.timeUnitsPerBeat;
+    out.beatsPerMeasure = this.beatsPerMeasure;
+    out.beatValue = this.beatValue;
     for(final voice in voices) {
       out.voices.add(voice.toSerializable(out));
     }
@@ -460,13 +470,13 @@ class MuonProjectController extends GetxController {
   }
 
   static MuonProjectController fromSerializable(MuonProject obj) {
-    final out = MuonProjectController();
-    out.projectDir.value = obj.projectDir;
-    out.projectFileName.value = obj.projectFileName;
-    out.bpm.value = obj.bpm;
-    out.timeUnitsPerBeat.value = obj.timeUnitsPerBeat;
-    out.beatsPerMeasure.value = obj.beatsPerMeasure;
-    out.beatValue.value = obj.beatValue;
+    final out = MuonProjectController().ctx();
+    out.projectDir = obj.projectDir;
+    out.projectFileName = obj.projectFileName;
+    out.bpm = obj.bpm;
+    out.timeUnitsPerBeat = obj.timeUnitsPerBeat;
+    out.beatsPerMeasure = obj.beatsPerMeasure;
+    out.beatValue = obj.beatValue;
     for(final voice in obj.voices) {
       out.addVoice(MuonVoiceController.fromSerializable(voice,out));
     }

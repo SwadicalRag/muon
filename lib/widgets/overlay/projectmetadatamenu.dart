@@ -2,7 +2,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import "package:synaps_flutter/synaps_flutter.dart";
 import 'package:muon/editor.dart';
 
 class MuonProjectMetadataMenu extends StatelessWidget {
@@ -23,46 +23,46 @@ class MuonProjectMetadataMenu extends StatelessWidget {
           SizedBox(height: 10),
           Align(
             alignment: Alignment.center,
-            child: Obx(() => Text(currentProject.bpm.value.toString() + " BPM",style: TextStyle(fontSize: 16),))
+            child: Rx(() => Text(currentProject.bpm.toString() + " BPM",style: TextStyle(fontSize: 16),))
           ),
-          Obx(() => Slider(
-            value: currentProject.bpm.value,
+          Rx(() => Slider(
+            value: currentProject.bpm,
             min: 40,
             max: 240,
             divisions: 200,
-            label: currentProject.bpm.value.toString() + " bpm",
+            label: currentProject.bpm.toString() + " bpm",
             onChanged: (double value) {
-              currentProject.bpm.value = value.floorToDouble();
+              currentProject.bpm = value.floorToDouble();
             },
           )),
           SizedBox(height: 10),
           Align(
             alignment: Alignment.center,
-            child: Obx(() => Text(currentProject.beatsPerMeasure.value.toString() + " Beats per Measure",style: TextStyle(fontSize: 16),))
+            child: Rx(() => Text(currentProject.beatsPerMeasure.toString() + " Beats per Measure",style: TextStyle(fontSize: 16),))
           ),
-          Obx(() => Slider(
-            value: currentProject.beatsPerMeasure.value.toDouble(),
+          Rx(() => Slider(
+            value: currentProject.beatsPerMeasure.toDouble(),
             min: 1,
             max: 32,
             divisions: 32,
-            label: currentProject.beatsPerMeasure.value.toString() + " beats",
+            label: currentProject.beatsPerMeasure.toString() + " beats",
             onChanged: (double value) {
-              currentProject.beatsPerMeasure.value = value.round();
+              currentProject.beatsPerMeasure = value.round();
             },
           )),
           SizedBox(height: 10),
           Align(
             alignment: Alignment.center,
-            child: Obx(() => Text("Beat Value of 1 / " + currentProject.beatValue.value.toString(),style: TextStyle(fontSize: 16),))
+            child: Rx(() => Text("Beat Value of 1 / " + currentProject.beatValue.toString(),style: TextStyle(fontSize: 16),))
           ),
-          Obx(() => Slider(
-            value: log(currentProject.beatValue.value) / log(2),
+          Rx(() => Slider(
+            value: log(currentProject.beatValue) / log(2),
             min: 1,
             max: 5,
             divisions: 4,
-            label: "1 / " + currentProject.beatValue.value.toString(),
+            label: "1 / " + currentProject.beatValue.toString(),
             onChanged: (double value) {
-              currentProject.beatValue.value = pow(2,value.round());
+              currentProject.beatValue = pow(2,value.round());
             },
           )),
         ],

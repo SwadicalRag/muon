@@ -88,10 +88,10 @@ class MuonEditor extends StatefulWidget {
     .then((value) {
       if(value != null) {
         currentProject.updateWith(MuonProjectController.defaultProject());
-        currentProject.projectDir.value = p.dirname(value);
-        currentProject.projectFileName.value = p.basename(value);
-        if(!currentProject.projectFileName.value.endsWith(".json")) {
-          currentProject.projectFileName.value += ".json";
+        currentProject.projectDir = p.dirname(value);
+        currentProject.projectFileName = p.basename(value);
+        if(!currentProject.projectFileName.endsWith(".json")) {
+          currentProject.projectFileName += ".json";
         }
         currentProject.save();
 
@@ -107,26 +107,26 @@ class MuonEditor extends StatefulWidget {
   /// Will show snackbars on errors
   /// 
   static Future<void> playAudio(BuildContext context) async {
-    if(currentProject.internalStatus.value != "idle") {return;}
+    if(currentProject.internalStatus != "idle") {return;}
 
     final playPos = Duration(
       milliseconds: currentProject.getLabelMillisecondOffset() + 
         (
           1000 * 
           (
-            currentProject.playheadTime.value / 
-            (currentProject.bpm.value / 60)
+            currentProject.playheadTime / 
+            (currentProject.bpm / 60)
           )
         ).floor()
       );
 
     List<Future<void>> compileRes = [];
-    currentProject.internalStatus.value = "compiling";
+    currentProject.internalStatus = "compiling";
     for(final voice in currentProject.voices) {
       compileRes.add(_compileVoiceInternal(voice));
     }
     await Future.wait(compileRes);
-    currentProject.internalStatus.value = "idle";
+    currentProject.internalStatus = "idle";
 
     List<Future<bool>> voiceRes = [];
     for(final voice in currentProject.voices) {
@@ -149,7 +149,7 @@ class MuonEditor extends StatefulWidget {
         }
       }
       else {
-        currentProject.internalStatus.value = "playing";
+        currentProject.internalStatus = "playing";
       }
     }
   }
@@ -169,7 +169,7 @@ class MuonEditor extends StatefulWidget {
   /// Will show snackbars on progress
   /// 
   static Future<void> compileVoiceInternalNSF(BuildContext context) async {
-    currentProject.internalStatus.value = "compiling_nsf";
+    currentProject.internalStatus = "compiling_nsf";
     int voiceID = 0;
     for(final voice in currentProject.voices) {
       voiceID++;
@@ -181,7 +181,7 @@ class MuonEditor extends StatefulWidget {
       );
       await voice.vocodeNSF();
     }
-    currentProject.internalStatus.value = "idle";
+    currentProject.internalStatus = "idle";
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: new Text("NSF complete!"),
@@ -217,11 +217,11 @@ class MuonEditor extends StatefulWidget {
         voice.audioPlayer.unload();
       }
     }
-    if(currentProject.internalStatus.value == "playing") {
-      currentProject.internalStatus.value = "idle";
+    if(currentProject.internalStatus == "playing") {
+      currentProject.internalStatus = "idle";
     }
     else {
-      currentProject.playheadTime.value = 0;
+      currentProject.playheadTime = 0;
     }
   }
 
@@ -284,7 +284,7 @@ class _MuonEditorState extends State<MuonEditor> {
                 
                 if(noteAtCursor != null) {
                   var mouseBeats = pianoRoll.painter.getBeatNumAtCursor(mousePos.x);
-                  var endBeat = (noteAtCursor.startAtTime.value + noteAtCursor.duration.value) / currentProject.timeUnitsPerBeat.value;
+                  var endBeat = (noteAtCursor.startAtTime + noteAtCursor.duration) / currentProject.timeUnitsPerBeat;
 
                   var cursorBeatEndDistance = (endBeat - mouseBeats) * pianoRoll.state.xScale * pianoRoll.painter.pixelsPerBeat;
 
@@ -316,7 +316,7 @@ class _MuonEditorState extends State<MuonEditor> {
                     currentProject.selectedNotes[noteAtCursor] = !currentProject.selectedNotes[noteAtCursor];
                   }
                   else {
-                    currentProject.playheadTime.value = (pianoRoll.painter.getBeatNumAtCursor(mousePos.x) * currentProject.timeUnitsPerBeat.value).roundToDouble() / currentProject.timeUnitsPerBeat.value;
+                    currentProject.playheadTime = (pianoRoll.painter.getBeatNumAtCursor(mousePos.x) * currentProject.timeUnitsPerBeat).roundToDouble() / currentProject.timeUnitsPerBeat;
                   }
                 }
                 else if(numClicks == 2) {
@@ -326,7 +326,7 @@ class _MuonEditorState extends State<MuonEditor> {
                     // edit note lyrics
                     final RenderBox overlay = Overlay.of(context).context.findRenderObject();
 
-                    final initialLyricValue = noteAtCursor.lyric.value;
+                    final initialLyricValue = noteAtCursor.lyric;
                     final textController = TextEditingController(text: initialLyricValue);
                     textController.selection = TextSelection(baseOffset: 0, extentOffset: initialLyricValue.length);
 
@@ -357,21 +357,21 @@ class _MuonEditorState extends State<MuonEditor> {
                               for(int i=curNotePos;i < noteAtCursor.voice.notes.length;i++) {
                                 if((i - curNotePos) < hiraganaList.length) {
                                   if(!editHistory.containsKey(i)) {
-                                    editHistory[i] = noteAtCursor.voice.notes[i].lyric.value;
+                                    editHistory[i] = noteAtCursor.voice.notes[i].lyric;
                                   }
-                                  noteAtCursor.voice.notes[i].lyric.value = hiraganaList[i - curNotePos];
+                                  noteAtCursor.voice.notes[i].lyric = hiraganaList[i - curNotePos];
                                 }
                                 else if(editHistory.containsKey(i)) {
-                                  noteAtCursor.voice.notes[i].lyric.value = editHistory[i];
+                                  noteAtCursor.voice.notes[i].lyric = editHistory[i];
                                 }
                               }
 
                               if(hiraganaList.length == 0) {
                                 // short cut: just remove the lyrics to the current note
                                 if(!editHistory.containsKey(curNotePos)) {
-                                  editHistory[curNotePos] = noteAtCursor.lyric.value;
+                                  editHistory[curNotePos] = noteAtCursor.lyric;
                                 }
-                                noteAtCursor.lyric.value = "";
+                                noteAtCursor.lyric = "";
                               }
 
                               // dumb hack to force repaint
@@ -384,14 +384,14 @@ class _MuonEditorState extends State<MuonEditor> {
                     );
                   }
                   else {
-                    if(currentProject.voices.length > currentProject.currentVoiceID.value) {
-                      MuonVoiceController voice = currentProject.voices[currentProject.currentVoiceID.value];
-                      var note = MuonNoteController();
+                    if(currentProject.voices.length > currentProject.currentVoiceID) {
+                      MuonVoiceController voice = currentProject.voices[currentProject.currentVoiceID];
+                      var note = MuonNoteController().ctx();
                       var pitch = pianoRoll.painter.getPitchAtCursor(mousePos.y);
-                      note.octave.value = pitch.octave;
-                      note.note.value = pitch.note;
-                      note.startAtTime.value = (pianoRoll.painter.getBeatNumAtCursor(mousePos.x) * currentProject.timeUnitsPerBeat.value).floor();
-                      note.duration.value = 1;
+                      note.octave = pitch.octave;
+                      note.note = pitch.note;
+                      note.startAtTime = (pianoRoll.painter.getBeatNumAtCursor(mousePos.x) * currentProject.timeUnitsPerBeat).floor();
+                      note.duration = 1;
                       voice.addNote(note);
                     }
                   }
@@ -411,7 +411,7 @@ class _MuonEditorState extends State<MuonEditor> {
                 
                 var originalFirstNote = originalNoteData[note];
                 var mouseBeats = pianoRoll.painter.getBeatNumAtCursor(mouseFirstPos.x);
-                var endBeat = (originalFirstNote.startAtTime + originalFirstNote.duration) / currentProject.timeUnitsPerBeat.value;
+                var endBeat = (originalFirstNote.startAtTime + originalFirstNote.duration) / currentProject.timeUnitsPerBeat;
 
                 var cursorBeatEndDistance = (endBeat - mouseBeats) * pianoRoll.state.xScale * pianoRoll.painter.pixelsPerBeat;
 
@@ -421,27 +421,27 @@ class _MuonEditorState extends State<MuonEditor> {
                 final deltaSemiTones = (pianoRoll.painter.screenPixelsToSemitones(mousePos.y - mouseFirstPos.y) + fpDeltaSemiTones).floor();
 
                 final fpDeltaBeats = (pianoRoll.painter.getBeatNumAtCursor(mouseFirstPos.x) % 1);
-                final deltaBeats = pianoRoll.painter.screenPixelsToBeats(mousePos.x - mouseFirstPos.x) + fpDeltaBeats / currentProject.timeUnitsPerBeat.value;
-                final deltaSegments = deltaBeats * currentProject.timeUnitsPerBeat.value;
+                final deltaBeats = pianoRoll.painter.screenPixelsToBeats(mousePos.x - mouseFirstPos.x) + fpDeltaBeats / currentProject.timeUnitsPerBeat;
+                final deltaSegments = deltaBeats * currentProject.timeUnitsPerBeat;
                 final deltaSegmentsFixed = deltaSegments.floor();
 
                 for(final selectedNote in currentProject.selectedNotes.keys) {
                   if(currentProject.selectedNotes[selectedNote]) {
                     if(originalNoteData[selectedNote] != null) {
                       if(resizeMode) {
-                        selectedNote.duration.value = max(1,originalNoteData[selectedNote].duration + deltaSegmentsFixed);
+                        selectedNote.duration = max(1,originalNoteData[selectedNote].duration + deltaSegmentsFixed);
                       }
                       else {
-                        selectedNote.startAtTime.value = max(0,originalNoteData[selectedNote].startAtTime + deltaSegmentsFixed);
-                        selectedNote.note.value = originalNoteData[selectedNote].note;
-                        selectedNote.octave.value = originalNoteData[selectedNote].octave;
+                        selectedNote.startAtTime = max(0,originalNoteData[selectedNote].startAtTime + deltaSegmentsFixed);
+                        selectedNote.note = originalNoteData[selectedNote].note;
+                        selectedNote.octave = originalNoteData[selectedNote].octave;
                         selectedNote.addSemitones(deltaSemiTones.floor());
                       }
                     }
                   }
                 }
 
-                currentProject.playheadTime.value = note.startAtTime.value / currentProject.timeUnitsPerBeat.value;
+                currentProject.playheadTime = note.startAtTime / currentProject.timeUnitsPerBeat;
               },
               (pianoRoll,mouseEvent,mouseRect) {
                 // final mousePos = Point(mouseEvent.localPosition.dx,mouseEvent.localPosition.dy);
@@ -456,11 +456,11 @@ class _MuonEditorState extends State<MuonEditor> {
                 double earliestTime = 1 / 0;
                 for(final note in notes) {
                   currentProject.selectedNotes[note] = true;
-                  earliestTime = min(earliestTime,note.startAtTime.value / currentProject.timeUnitsPerBeat.value);
+                  earliestTime = min(earliestTime,note.startAtTime / currentProject.timeUnitsPerBeat);
                 }
 
                 if(earliestTime.isFinite) {
-                  currentProject.playheadTime.value = earliestTime;
+                  currentProject.playheadTime = earliestTime;
                 }
               },
               (pianoRoll,keyEvent) {
@@ -491,7 +491,7 @@ class _MuonEditorState extends State<MuonEditor> {
                       if(currentProject.selectedNotes[selectedNote]) {
                         currentProject.copiedNotesVoices.add(selectedNote.voice);
                         currentProject.copiedNotes.add(selectedNote.toSerializable());
-                        earliestTime = min(earliestTime,selectedNote.startAtTime.value);
+                        earliestTime = min(earliestTime,selectedNote.startAtTime);
 
                         if(cut) {
                           selectedNote.voice.notes.remove(selectedNote);
@@ -513,10 +513,10 @@ class _MuonEditorState extends State<MuonEditor> {
                       final note = currentProject.copiedNotes[idx];
                       final voice = currentProject.copiedNotesVoices[idx];
                       final cNote = MuonNoteController.fromSerializable(note);
-                      cNote.startAtTime.value = cNote.startAtTime.value + (currentProject.playheadTime.value * currentProject.timeUnitsPerBeat.value).floor();
+                      cNote.startAtTime = cNote.startAtTime + (currentProject.playheadTime * currentProject.timeUnitsPerBeat).floor();
                       if(keyEvent.isShiftPressed) {
-                        if(currentProject.currentVoiceID.value < currentProject.voices.length) {
-                          currentProject.voices[currentProject.currentVoiceID.value].addNote(cNote);
+                        if(currentProject.currentVoiceID < currentProject.voices.length) {
+                          currentProject.voices[currentProject.currentVoiceID].addNote(cNote);
                         }
                       }
                       else {
@@ -573,11 +573,11 @@ class _MuonEditorState extends State<MuonEditor> {
                   pianoRoll.state.repaint();
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowRight)) {
-                  int moveBy = keyEvent.isShiftPressed ? currentProject.timeUnitsPerBeat.value : 1;
+                  int moveBy = keyEvent.isShiftPressed ? currentProject.timeUnitsPerBeat : 1;
 
                   for(final selectedNote in currentProject.selectedNotes.keys) {
                     if(currentProject.selectedNotes[selectedNote]) {
-                      selectedNote.startAtTime.value = selectedNote.startAtTime.value + moveBy;
+                      selectedNote.startAtTime = selectedNote.startAtTime + moveBy;
                     }
                   }
 
@@ -585,11 +585,11 @@ class _MuonEditorState extends State<MuonEditor> {
                   pianoRoll.state.repaint();
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowLeft)) {
-                  int moveBy = keyEvent.isShiftPressed ? -currentProject.timeUnitsPerBeat.value : -1;
+                  int moveBy = keyEvent.isShiftPressed ? -currentProject.timeUnitsPerBeat : -1;
 
                   for(final selectedNote in currentProject.selectedNotes.keys) {
                     if(currentProject.selectedNotes[selectedNote]) {
-                      selectedNote.startAtTime.value = max(0,selectedNote.startAtTime.value + moveBy);
+                      selectedNote.startAtTime = max(0,selectedNote.startAtTime + moveBy);
                     }
                   }
 
@@ -597,7 +597,7 @@ class _MuonEditorState extends State<MuonEditor> {
                   pianoRoll.state.repaint();
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.space)) {
-                  if(currentProject.internalStatus.value == "playing") {
+                  if(currentProject.internalStatus == "playing") {
                     MuonEditor.stopAudio();
                   }
                   else {

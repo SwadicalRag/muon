@@ -1,7 +1,7 @@
 import "dart:io";
 
 import "package:flutter/material.dart";
-import "package:get/get.dart";
+import "package:synaps_flutter/synaps_flutter.dart";
 import "package:muon/controllers/muonnote.dart";
 import "package:muon/controllers/muonproject.dart";
 import 'package:muon/logic/helpers.dart';
@@ -9,20 +9,26 @@ import "package:muon/serializable/muon.dart";
 import "package:muon/logic/musicxml.dart";
 import "package:flutter_audio_desktop/flutter_audio_desktop.dart";
 
-class MuonVoiceController extends GetxController {
+part "muonvoice.g.dart";
+
+@Controller()
+class MuonVoiceController with WeakEqualityController {
   MuonProjectController project;
 
   /// Folder name of the voice model this voice uses
-  final modelName = MuonHelpers.getDefaultVoiceModel().obs;
+  @Observable()
+  String modelName = MuonHelpers.getDefaultVoiceModel();
 
   /// Randomise timings of this vocal on each render (for use as a backing
   /// vocal for harmonies)
   /// 
   /// TODO: actually use this value
-  final randomiseTiming = false.obs;
+  @Observable()
+  bool randomiseTiming = false;
 
   /// The list of all of the notes that this voice sings
-  final notes = RxList<MuonNoteController>([]);
+  @Observable()
+  List<MuonNoteController> notes = [];
 
   /// Exports this voice to a MusicXML class
   MusicXML exportVoiceToMusicXML() {
@@ -31,7 +37,7 @@ class MuonVoiceController extends GetxController {
 
   /// Sorts all of the notes in this voice chronologically
   void sortNotesByTime() {
-    notes.sort((a,b) => a.startAtTime.value.compareTo(b.startAtTime.value));
+    notes.sort((a,b) => a.startAtTime.compareTo(b.startAtTime));
   }
 
   /// Helper method to add a note into this voice, and also updates the
@@ -119,7 +125,7 @@ class MuonVoiceController extends GetxController {
       project.getProjectFilePath("neutrino/" + voiceFileName + ".f0"),
       project.getProjectFilePath("neutrino/" + voiceFileName + ".mgc"),
       project.getProjectFilePath("neutrino/" + voiceFileName + ".bap"),
-      MuonHelpers.getRawProgramPath("model/" + modelName.value + "/"),
+      MuonHelpers.getRawProgramPath("model/" + modelName + "/"),
       "-n","8",
       "-k","0",
       "-m",
@@ -174,7 +180,7 @@ class MuonVoiceController extends GetxController {
       project.getProjectFilePath("neutrino/" + voiceFileName + ".f0"),
       project.getProjectFilePath("neutrino/" + voiceFileName + ".mgc"),
       project.getProjectFilePath("neutrino/" + voiceFileName + ".bap"),
-      modelName.value,
+      modelName,
       project.getProjectFilePath("audio/" + voiceFileName + "_nsf.wav"),
       "-t",
     ],workingDirectory: MuonHelpers.getRawProgramPath("")).then((ProcessResult results) {
@@ -206,8 +212,8 @@ class MuonVoiceController extends GetxController {
   MuonVoice toSerializable([MuonProject project]) {
     final out = MuonVoice();
     out.project = project ?? this.project.toSerializable();
-    out.modelName = this.modelName.value;
-    out.randomiseTiming = this.randomiseTiming.value;
+    out.modelName = this.modelName;
+    out.randomiseTiming = this.randomiseTiming;
     for(final note in notes) {
       out.notes.add(note.toSerializable());
     }
@@ -215,10 +221,10 @@ class MuonVoiceController extends GetxController {
   }
 
   static MuonVoiceController fromSerializable(MuonVoice obj, [MuonProjectController project]) {
-    final out = MuonVoiceController();
+    final out = MuonVoiceController().ctx();
     out.project = project ?? MuonProjectController.fromSerializable(obj.project);
-    out.modelName.value = obj.modelName;
-    out.randomiseTiming.value = obj.randomiseTiming;
+    out.modelName = obj.modelName;
+    out.randomiseTiming = obj.randomiseTiming;
     for(final note in obj.notes) {
       out.addNote(MuonNoteController.fromSerializable(note));
     }
