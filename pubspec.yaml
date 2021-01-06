@@ -47,7 +47,6 @@ dependencies:
       url: git://github.com/google/flutter-desktop-embedding.git
       path: plugins/file_selector/file_selector_windows
       ref: 43901ebd12548a3c2a077d4dbeb3b56f0a0bdd09
-  get: ^3.24.0
   kana_kit: ^1.0.4
   path: ^1.7.0
   flutter_audio_desktop:
