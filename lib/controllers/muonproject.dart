@@ -165,7 +165,7 @@ class MuonProjectController with WeakEqualityController {
 
     final baseVoice = MuonVoiceController().ctx();
     baseVoice.addNote(
-      MuonNoteController()
+      MuonNoteController().ctx()
         ..startAtTime = 0
         ..duration = 1
         ..note = "C"
@@ -173,7 +173,7 @@ class MuonProjectController with WeakEqualityController {
         ..lyric = "ら"
     );
     baseVoice.addNote(
-      MuonNoteController()
+      MuonNoteController().ctx()
         ..startAtTime = 1
         ..duration = 1
         ..note = "D"
@@ -181,7 +181,7 @@ class MuonProjectController with WeakEqualityController {
         ..lyric = "ら"
     );
     baseVoice.addNote(
-      MuonNoteController()
+      MuonNoteController().ctx()
         ..startAtTime = 2
         ..duration = 1
         ..note = "E"
@@ -189,7 +189,7 @@ class MuonProjectController with WeakEqualityController {
         ..lyric = "ら"
     );
     baseVoice.addNote(
-      MuonNoteController()
+      MuonNoteController().ctx()
         ..startAtTime = 3
         ..duration = 1
         ..note = "F"
@@ -268,7 +268,7 @@ class MuonProjectController with WeakEqualityController {
       MidiFile midi = midiParser.parseMidiFromFile(midiFile);
 
       if(midi.header.format == 0) {
-        var voice = MuonVoiceController()..project = this;
+        var voice = MuonVoiceController().ctx()..project = this;
 
         int timeUnitMulFactor = 1;
         if(this.timeUnitsPerBeat != midi.header.ticksPerBeat) {
@@ -359,7 +359,7 @@ class MuonProjectController with WeakEqualityController {
   }
 
   void importVoiceFromMusicXML(MusicXML musicXML,bool importTimeMetadata) {
-    var voice = MuonVoiceController()..project = this;
+    var voice = MuonVoiceController().ctx()..project = this;
 
     int timeUnitMulFactor = 1;
     for(final event in musicXML.events) {
