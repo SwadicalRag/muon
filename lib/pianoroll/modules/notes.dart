@@ -227,7 +227,9 @@ class PianoRollNotesModule extends PianoRollModule {
 
           final action = RenameNoteAction(newNoteLyrics, originalNoteLyrics, lastInput);
 
-          project.addAction(action);
+          if(newNoteLyrics.isNotEmpty) {
+            project.addAction(action);
+          }
         });
       }
       else {
@@ -453,10 +455,13 @@ class PianoRollNotesModule extends PianoRollModule {
         }
       }
 
-      final action = DeleteNoteAction(getSelectedNotesAsList());
-      project.addAction(action);
+      final noteList = getSelectedNotesAsList();
+      if(noteList.isNotEmpty) {
+        final action = DeleteNoteAction(noteList);
+        project.addAction(action);
 
-      selectedNotes.clear();
+        selectedNotes.clear();
+      }
     }
     else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowUp)) {
       int moveBy = keyEvent.isShiftPressed ? 12 : 1;
