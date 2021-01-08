@@ -32,6 +32,11 @@ Coming soon!
 
 ## Changelog
 
+### [09/01/2021] 0.0.4 - Undo/Redo!
+ - Added undos/redos
+ - Voices now intelligently cache their audio until something in that voice gets edited
+ - Fixed some minor bugs with reactivity
+
 ### [08/01/2021] 0.0.3 - Minimum releasable candidate
  - Cleaned up code, abstracted pianoroll to facilitate any future extensions (e.g. f0/mgc editing)
  - Upgraded to use the synaps state management library (and as a result cleaned up more code!)

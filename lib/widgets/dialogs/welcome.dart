@@ -41,7 +41,7 @@ class MuonWelcomeDialog extends StatelessWidget {
             onPressed: () {
               showAboutDialog(
                 context: context,
-                applicationVersion: "0.0.3",
+                applicationVersion: "0.0.4",
                 applicationName: "Muon",
                 applicationLegalese: "copyright (c) swadical 2021",
               );
