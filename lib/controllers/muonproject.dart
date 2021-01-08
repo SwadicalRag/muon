@@ -12,7 +12,7 @@ part "muonproject.g.dart";
 
 /// 
 /// The main class where the muon project is stored.
-/// Has reactive getters/setters with the aid of GetX
+/// Has reactive getters/setters with the aid of synaps
 /// 
 @Controller()
 class MuonProjectController with WeakEqualityController {
