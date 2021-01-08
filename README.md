@@ -15,13 +15,13 @@ A GUI for the [Neutrino neural singing synthesizer](https://n3utrino.work), writ
 #### Seamless romaji -> hiragana voice editing
 ![Lyric editing](eyecandy/lyric_editing.png)
 
-### Multiple voices rendered in parallel
+#### Multiple voices rendered in parallel
 ![Multiple voices](eyecandy/multi_voice.png)
 
-### Automatic voice model listing and on-the-fly changing
+#### Automatic voice model listing and on-the-fly changing
 ![Voice Model Changing](eyecandy/voice_model_change.png)
 
-### MIDI/MusicXML import
+#### MIDI/MusicXML import
 ![MIDI Import](eyecandy/midi_import.png)
 ![MusicXML Import](eyecandy/musicxml_import.png)
 
