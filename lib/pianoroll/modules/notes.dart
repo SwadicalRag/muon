@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:muon/actions/cutnote.dart';
 import 'package:muon/actions/deletenote.dart';
 import 'package:muon/actions/movenote.dart';
 import 'package:muon/actions/pastenote.dart';
@@ -402,12 +403,15 @@ class PianoRollNotesModule extends PianoRollModule {
         project.copiedNotes.clear();
         project.copiedNotesVoices.clear();
 
+        final listNotes = <MuonNoteController>[];
+
         int earliestTime = 2147483647; // assuming int32, I cannot be bothered verifying this
         for(final selectedNote in selectedNotes.keys) {
           if(selectedNotes[selectedNote]) {
             project.copiedNotesVoices.add(selectedNote.voice);
             project.copiedNotes.add(selectedNote.toSerializable());
             earliestTime = min(earliestTime,selectedNote.startAtTime);
+            listNotes.add(selectedNote);
 
             if(cut) {
               selectedNote.voice.notes.remove(selectedNote);
@@ -417,6 +421,12 @@ class PianoRollNotesModule extends PianoRollModule {
 
         for(final note in project.copiedNotes) {
           note.startAtTime -= earliestTime;
+        }
+
+        if(project.copiedNotes.isNotEmpty) {
+          final action = CutNoteAction(listNotes);
+
+          project.addAction(action);
         }
       }
       else if(keyEvent.isKeyPressed(LogicalKeyboardKey.keyV)) {
