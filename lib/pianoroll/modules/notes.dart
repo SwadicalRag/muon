@@ -228,7 +228,8 @@ class PianoRollNotesModule extends PianoRollModule {
           note.octave = pitch.octave;
           note.note = pitch.note;
           note.startAtTime = (painter.getBeatNumAtCursor(mousePos.x) * project.timeUnitsPerBeat).floor();
-          note.duration = 1;
+          note.startAtTime = floorToModulus(note.startAtTime, project.timeUnitsPerSubdivision);
+          note.duration = project.timeUnitsPerSubdivision;
           voice.addNote(note);
         }
       }
