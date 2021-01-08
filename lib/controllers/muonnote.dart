@@ -45,6 +45,15 @@ class MuonNoteController with WeakEqualityController {
     octave = octave + deltaOctave;
   }
 
+  /// Returns the number of semitones this note is above C0.
+  int toAbsoluteSemitones() {
+    const midiNotes = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+
+    final currentNoteID = midiNotes.indexOf(note);
+    
+    return octave * 12 + currentNoteID;
+  }
+
   MuonNote toSerializable() {
     final out = MuonNote();
     out.note = this.note;

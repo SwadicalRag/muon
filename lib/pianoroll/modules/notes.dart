@@ -10,6 +10,14 @@ import 'package:muon/pianoroll/pianoroll.dart';
 import 'package:muon/serializable/muon.dart';
 import 'package:synaps_flutter/synaps_flutter.dart';
 
+int _toAbsoluteSemitones(String note, int octave) {
+  const midiNotes = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+
+  final currentNoteID = midiNotes.indexOf(note);
+  
+  return octave * 12 + currentNoteID;
+}
+
 class PianoRollNotesModule extends PianoRollModule {
   final SynapsMap<MuonNoteController, bool> selectedNotes;
 
@@ -76,7 +84,7 @@ class PianoRollNotesModule extends PianoRollModule {
 
   bool hitTest(Point point) {
     final noteAtCursor = getNoteAtScreenPos(point);
-    
+
     if(noteAtCursor != null) {
       return true;
     }
@@ -94,7 +102,7 @@ class PianoRollNotesModule extends PianoRollModule {
 
       var cursorBeatEndDistance = (endBeat - mouseBeats) * painter.xScale * painter.pixelsPerBeat;
 
-      if(cursorBeatEndDistance < 10) {
+      if(cursorBeatEndDistance < 15) {
         state.setCursor(SystemMouseCursors.resizeLeftRight);
       }
       else {
@@ -240,15 +248,15 @@ class PianoRollNotesModule extends PianoRollModule {
 
     var cursorBeatEndDistance = (endBeat - mouseBeats) * painter.xScale * painter.pixelsPerBeat;
 
-    bool resizeMode = cursorBeatEndDistance < 10;
-
-    final fpDeltaSemiTones = painter.screenPixelsToSemitones(mouseStartPos.y) % 1;
-    final deltaSemiTones = (painter.screenPixelsToSemitones(mousePos.y - mouseStartPos.y) + fpDeltaSemiTones).floor();
+    bool resizeMode = cursorBeatEndDistance < 15;
 
     final fpDeltaBeats = (painter.getBeatNumAtCursor(mouseStartPos.x) % 1);
     final deltaBeats = painter.screenPixelsToBeats(mousePos.x - mouseStartPos.x) + fpDeltaBeats / project.timeUnitsPerBeat;
     final deltaSegments = deltaBeats * project.timeUnitsPerBeat;
     final deltaSegmentsFixed = deltaSegments.floor();
+
+    final mousePitch = painter.getPitchAtCursor(mousePos.y);
+    final deltaSemiTones = _toAbsoluteSemitones(mousePitch.note,mousePitch.octave) - _toAbsoluteSemitones(originalFirstNote.note,originalFirstNote.octave);
 
     for(final selectedNote in selectedNotes.keys) {
       if(selectedNotes[selectedNote]) {
