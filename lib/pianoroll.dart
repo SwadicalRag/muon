@@ -34,12 +34,21 @@ abstract class PianoRollModule {
   _PianoRollState get state => _state;
   PianoRollPainter _painter;
   PianoRollPainter get painter => _painter;
-  MuonProjectController _project;
-  MuonProjectController get project => _project;
 
-  void attachToProject(MuonProjectController project) {
-    _project = project;
+  PianoRoll get widget => _state.widget;
+  MuonProjectController get project => widget.project;
+
+  void attach(_PianoRollState state,PianoRollPainter painter) {
+    _state = state;
+    _painter = painter;
   }
+
+  void detach() {
+    _state = null;
+    _painter = null;
+  }
+
+  void dispose() {}
 
   void onHover(PointerEvent mouseEvent);
   void onClick(PointerEvent mouseEvent,int numClicks);
@@ -125,6 +134,12 @@ class _PianoRollState extends State<PianoRoll> {
   @override
   void dispose() {
     RawKeyboard.instance.removeListener(_keyListener);
+          
+    for(final module in widget.modules) {
+      module.dispose();
+      module.detach();
+    }
+    
     super.dispose();
   }
 
@@ -184,6 +199,10 @@ class _PianoRollState extends State<PianoRoll> {
           final controls = PianoRollControls();
           controls.painter = rectPainter;
           controls.state = this;
+          
+          for(final module in widget.modules) {
+            module.attach(this,rectPainter);
+          }
 
           return RawKeyboardListener(
             focusNode: focusNode,
