@@ -53,6 +53,7 @@ class MuonProjectController with WeakEqualityController {
   int currentVoiceID = 0;
 
   /// A list of all selected notes in this project (i.e. control A/mouse select)
+  @Observable()
   final selectedNotes = Map<MuonNoteController,bool>();
 
   /// Current time value of where the playhead is in beats
