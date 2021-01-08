@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:muon/actions/deletenote.dart';
 import 'package:muon/actions/movenote.dart';
+import 'package:muon/actions/pastenote.dart';
 import 'package:muon/actions/renamenote.dart';
 import 'package:muon/actions/retimenote.dart';
 import 'package:muon/controllers/muonnote.dart';
@@ -419,19 +420,28 @@ class PianoRollNotesModule extends PianoRollModule {
       else if(keyEvent.isKeyPressed(LogicalKeyboardKey.keyV)) {
         // paste
 
+        final listNotes = <MuonNoteController>[];
+
         for(int idx = 0;idx < project.copiedNotes.length;idx++) {
           final note = project.copiedNotes[idx];
           final voice = project.copiedNotesVoices[idx];
           final cNote = MuonNoteController.fromSerializable(note);
+          listNotes.add(cNote);
           cNote.startAtTime = cNote.startAtTime + (project.playheadTime * project.timeUnitsPerBeat).floor();
           if(keyEvent.isShiftPressed) {
             if(project.currentVoiceID < project.voices.length) {
-              project.voices[project.currentVoiceID].addNote(cNote);
+              project.voices[project.currentVoiceID].addNoteInternal(cNote);
             }
           }
           else {
-            voice.addNote(cNote);
+            voice.addNoteInternal(cNote);
           }
+        }
+
+        if(listNotes.isNotEmpty) {
+          final action = PasteNoteAction(listNotes);
+
+          project.addAction(action);
         }
       }
     }
