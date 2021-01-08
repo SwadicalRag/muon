@@ -276,9 +276,9 @@ class _MuonEditorState extends State<MuonEditor> {
         children: [
           Expanded(
             child: PianoRoll(
-              currentProject,
-              currentProject.selectedNotes,
-              (pianoRoll,mouseEvent) {
+              project: currentProject,
+              selectedNotes: currentProject.selectedNotes,
+              onHover: (pianoRoll,mouseEvent) {
                 final mousePos = Point(mouseEvent.localPosition.dx,mouseEvent.localPosition.dy);
                 final noteAtCursor = pianoRoll.painter.getNoteAtScreenPos(mousePos);
                 
@@ -299,7 +299,7 @@ class _MuonEditorState extends State<MuonEditor> {
                   pianoRoll.state.setCursor(MouseCursor.defer);
                 }
               },
-              (pianoRoll,mouseEvent,numClicks) {
+              onClick: (pianoRoll,mouseEvent,numClicks) {
                 final mousePos = Point(mouseEvent.localPosition.dx,mouseEvent.localPosition.dy);
                 // onClick
                 final noteAtCursor = pianoRoll.painter.getNoteAtScreenPos(mousePos);
@@ -394,7 +394,7 @@ class _MuonEditorState extends State<MuonEditor> {
                   }
                 }
               },
-              (pianoRoll,mouseEvent,mouseFirstPos,note,originalNoteData) {
+              onDrag: (pianoRoll,mouseEvent,mouseFirstPos,note,originalNoteData) {
                 final mousePos = Point(mouseEvent.localPosition.dx,mouseEvent.localPosition.dy);
                 // onDragNote
 
@@ -440,7 +440,7 @@ class _MuonEditorState extends State<MuonEditor> {
 
                 currentProject.playheadTime = note.startAtTime / currentProject.timeUnitsPerBeat;
               },
-              (pianoRoll,mouseEvent,mouseRect) {
+              onSelect: (pianoRoll,mouseEvent,mouseRect) {
                 // final mousePos = Point(mouseEvent.localPosition.dx,mouseEvent.localPosition.dy);
 
                 // onSelect
@@ -460,7 +460,7 @@ class _MuonEditorState extends State<MuonEditor> {
                   currentProject.playheadTime = earliestTime;
                 }
               },
-              (pianoRoll,keyEvent) {
+              onKey: (pianoRoll,keyEvent) {
                 if(keyEvent.isControlPressed) {
                   // control key commands
 

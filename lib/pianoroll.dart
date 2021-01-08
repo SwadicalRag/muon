@@ -28,30 +28,35 @@ typedef _onClickCallbackType = void Function(PianoRollControls pianoRoll,Pointer
 typedef _onDragCallbackType = void Function(PianoRollControls pianoRoll,PointerEvent mouseEvent,Point mouseStartPos,MuonNoteController note,Map<MuonNoteController,MuonNote> originalNoteData);
 typedef _onSelectCallbackType = void Function(PianoRollControls pianoRoll,PointerEvent mouseEvent,Rect selectionBox);
 typedef _onKeyCallbackType = void Function(PianoRollControls pianoRoll,RawKeyEvent keyEvent);
+typedef _doPaintCallbackType = void Function(Canvas canvas,Size size);
 
 class PianoRoll extends StatefulWidget {
-  PianoRoll(this.project,this.selectedNotes,this._onMouseHoverCallback,this._onClickCallback,this._onDragCallback,this._onSelectCallback,this._onKeyCallback);
+  PianoRoll({
+    @required this.project,
+    @required this.selectedNotes,
+    this.onHover,
+    this.onClick,
+    this.onDrag,
+    this.onSelect,
+    this.onKey,
+    this.doPaint,
+  });
 
   final MuonProjectController project;
   final Map<MuonNoteController,bool> selectedNotes;
-  final _onMouseHoverCallbackType _onMouseHoverCallback;
-  final _onClickCallbackType _onClickCallback;
-  final _onDragCallbackType _onDragCallback;
-  final _onSelectCallbackType _onSelectCallback;
-  final _onKeyCallbackType _onKeyCallback;
+  final _onMouseHoverCallbackType onHover;
+  final _onClickCallbackType onClick;
+  final _onDragCallbackType onDrag;
+  final _onSelectCallbackType onSelect;
+  final _onKeyCallbackType onKey;
+  final _doPaintCallbackType doPaint;
 
   @override
-  _PianoRollState createState() => _PianoRollState(project,selectedNotes,_onMouseHoverCallback,_onClickCallback,_onDragCallback,_onSelectCallback);
+  _PianoRollState createState() => _PianoRollState();
 }
 
 class _PianoRollState extends State<PianoRoll> {
-  _PianoRollState(this.project,this.selectedNotes,this._onMouseHoverCallback,this._onClickCallback,this._onDragCallback,this._onSelectCallback);
-  final MuonProjectController project;
-  final Map<MuonNoteController,bool> selectedNotes;
-  final _onMouseHoverCallbackType _onMouseHoverCallback;
-  final _onClickCallbackType _onClickCallback;
-  final _onDragCallbackType _onDragCallback;
-  final _onSelectCallbackType _onSelectCallback;
+  _PianoRollState();
   
   double pianoKeysWidth = 150.0;
   double xOffset = -1.0;
@@ -154,7 +159,7 @@ class _PianoRollState extends State<PianoRoll> {
 
           this.clampXY(constraits.maxHeight);
 
-          var rectPainter = PianoRollPainter(project, selectedNotes, themeData,
+          var rectPainter = PianoRollPainter(widget.project, widget.selectedNotes, themeData,
               pianoKeysWidth, xOffset, yOffset, xScale, yScale, selectionRect, curMousePos);
 
           final controls = PianoRollControls();
@@ -165,7 +170,7 @@ class _PianoRollState extends State<PianoRoll> {
             focusNode: focusNode,
             autofocus: true,
             onKey: (RawKeyEvent event) {
-              widget._onKeyCallback(controls,event);
+              widget?.onKey(controls,event);
             },
             child: MouseRegion(
               cursor: cursor,
@@ -228,8 +233,9 @@ class _PianoRollState extends State<PianoRoll> {
                 },
                 onPointerUp: (details) {
                   if(_selecting) {
+                    widget?.onSelect(controls,details,selectionRect);
+
                     setState(() {
-                      _onSelectCallback(controls,details,selectionRect);
                       selectionRect = null;
                     });
                   }
@@ -238,15 +244,11 @@ class _PianoRollState extends State<PianoRoll> {
                   }
                   else if(_dragging) {
                     // dragging a note!
-                    setState(() {
-                      _onDragCallback(controls,details,_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
-                    });
+                    widget?.onDrag(controls,details,_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
                   }
                   else {
                     // click!
-                    setState(() {
-                      _onClickCallback(controls,details,_lastClickCount + 1);
-                    });
+                    widget?.onClick(controls,details,_lastClickCount + 1);
 
                     if(_lastClickTimeDecay != null) {
                       _lastClickTimeDecay.cancel();
@@ -282,8 +284,8 @@ class _PianoRollState extends State<PianoRoll> {
                       noteDragOriginalData = {};
                       noteDragOriginalData[noteAtCursor] = noteAtCursor.toSerializable();
 
-                      for(final note in selectedNotes.keys) {
-                        if(selectedNotes[note]) {
+                      for(final note in widget.selectedNotes.keys) {
+                        if(widget.selectedNotes[note]) {
                           noteDragOriginalData[note] = note.toSerializable();
                         }
                       }
@@ -316,13 +318,11 @@ class _PianoRollState extends State<PianoRoll> {
                       var bottom = max(_firstMouseDownPos.y, details.localPosition.dy);
                       selectionRect = Rect.fromLTRB(left,top,right,bottom);
 
-                      _onSelectCallback(controls,details,selectionRect);
+                      widget?.onSelect(controls,details,selectionRect);
                     });
                   }
                   else if (_dragging == true) {
-                    setState(() {
-                      _onDragCallback(controls,details,_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
-                    });
+                    widget?.onDrag(controls,details,_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
                   }
                 },
                 onPointerHover: (details) {
@@ -335,7 +335,7 @@ class _PianoRollState extends State<PianoRoll> {
                   }
 
                   // final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
-                  _onMouseHoverCallback(controls,details);
+                  widget?.onHover(controls,details);
 
                   // var pitch = rectPainter.getPitchAtCursor(screenPos.y);
                   // var absTime = rectPainter.getBeatNumAtCursor(screenPos.x);
