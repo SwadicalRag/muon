@@ -137,14 +137,30 @@ class MuonProjectController with WeakEqualityController {
     // once we move to FFI for managing audio
     playbackTimer = Timer.periodic(Duration(milliseconds: 1),(Timer t) async {
       if(this.voices.length > this.currentVoiceID) {
-        MuonVoiceController voice = this.voices[this.currentVoiceID];
-        if(voice.audioPlayer != null) {
-          if(this.internalStatus == "playing") {
-            dynamic posDur = await voice.audioPlayer.getPosition();
+        if(this.internalStatus == "playing") {
+          MuonVoiceController longestVoice;
+
+          for(final voice in this.voices) {
+            if(voice.audioPlayer != null) {
+              if(voice.audioPlayerDuration != null) {
+                if(longestVoice != null) {
+                  if(voice.audioPlayerDuration > longestVoice.audioPlayerDuration) {
+                    longestVoice = voice;
+                  }
+                }
+                else {
+                  longestVoice = voice;
+                }
+              }
+            }
+          }
+
+          if(longestVoice != null) {
+            dynamic posDur = await longestVoice.audioPlayer.getPosition();
             if(posDur is Duration) {
               int curPos = posDur.inMilliseconds;
 
-              if(curPos >= voice.audioPlayerDuration) {
+              if(curPos >= longestVoice.audioPlayerDuration) {
                 this.playheadTime = 0;
                 this.internalStatus = "idle";
               }
