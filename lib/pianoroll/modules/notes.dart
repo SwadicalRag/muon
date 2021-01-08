@@ -33,6 +33,16 @@ class PianoRollNotesModule extends PianoRollModule {
     @required this.selectedNotes,
   }) : super();
 
+  List<MuonNoteController> getSelectedNotesAsList() {
+    final otherNotes = <MuonNoteController>[];
+    for(final selectedNote in selectedNotes.keys) {
+      if(selectedNotes[selectedNote]) {
+        otherNotes.add(selectedNote);
+      }
+    }
+    return otherNotes;
+  }
+
   /// Get the bounding rect of the note in the canvas coordinate system
   Rect getNoteRect(MuonNoteController note) {
     final noteL =
@@ -325,14 +335,8 @@ class PianoRollNotesModule extends PianoRollModule {
       final timeDelta = _internalDragFirstNote.startAtTime - originalNoteData.startAtTime;
       final semitoneDelta = _internalDragFirstNote.toAbsoluteSemitones() - _toAbsoluteSemitones(originalNoteData.note,originalNoteData.octave);
       if((timeDelta != 0) || (semitoneDelta != 0)) {
-        final otherNotes = <MuonNoteController>[];
-        for(final selectedNote in selectedNotes.keys) {
-          if(selectedNotes[selectedNote]) {
-            if(selectedNote != _internalDragFirstNote) {
-              otherNotes.add(selectedNote);
-            }
-          }
-        }
+        final otherNotes = getSelectedNotesAsList();
+        otherNotes.remove(_internalDragFirstNote);
         final action = MoveNoteAction(_internalDragFirstNote,otherNotes,timeDelta,semitoneDelta);
 
         project.addAction(action);
@@ -341,14 +345,8 @@ class PianoRollNotesModule extends PianoRollModule {
         final durationDelta = _internalDragFirstNote.duration - originalNoteData.duration;
 
         if(durationDelta != 0) {
-          final otherNotes = <MuonNoteController>[];
-          for(final selectedNote in selectedNotes.keys) {
-            if(selectedNotes[selectedNote]) {
-              if(selectedNote != _internalDragFirstNote) {
-                otherNotes.add(selectedNote);
-              }
-            }
-          }
+        final otherNotes = getSelectedNotesAsList();
+        otherNotes.remove(_internalDragFirstNote);
           final action = RetimeNoteAction(_internalDragFirstNote,otherNotes,durationDelta);
 
           project.addAction(action);
@@ -447,37 +445,77 @@ class PianoRollNotesModule extends PianoRollModule {
     else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowUp)) {
       int moveBy = keyEvent.isShiftPressed ? 12 : 1;
 
+      MuonNoteController lastNote;
       for(final selectedNote in selectedNotes.keys) {
         if(selectedNotes[selectedNote]) {
           selectedNote.addSemitones(moveBy);
+          lastNote = selectedNote;
         }
+      }
+      
+      if(lastNote != null) {
+        final otherNotes = getSelectedNotesAsList();
+        otherNotes.remove(lastNote);
+        final action = MoveNoteAction(lastNote,otherNotes,0,moveBy);
+
+        project.addAction(action);
       }
     }
     else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowDown)) {
       int moveBy = keyEvent.isShiftPressed ? -12 : -1;
 
+      MuonNoteController lastNote;
       for(final selectedNote in selectedNotes.keys) {
         if(selectedNotes[selectedNote]) {
           selectedNote.addSemitones(moveBy);
+          lastNote = selectedNote;
         }
+      }
+      
+      if(lastNote != null) {
+        final otherNotes = getSelectedNotesAsList();
+        otherNotes.remove(lastNote);
+        final action = MoveNoteAction(lastNote,otherNotes,0,moveBy);
+
+        project.addAction(action);
       }
     }
     else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowRight)) {
-      int moveBy = keyEvent.isShiftPressed ? project.timeUnitsPerBeat : 1;
+      int moveBy = keyEvent.isShiftPressed ? project.timeUnitsPerBeat : project.timeUnitsPerSubdivision;
 
+      MuonNoteController lastNote;
       for(final selectedNote in selectedNotes.keys) {
         if(selectedNotes[selectedNote]) {
           selectedNote.startAtTime = selectedNote.startAtTime + moveBy;
+          lastNote = selectedNote;
         }
+      }
+      
+      if(lastNote != null) {
+        final otherNotes = getSelectedNotesAsList();
+        otherNotes.remove(lastNote);
+        final action = MoveNoteAction(lastNote,otherNotes,moveBy,0);
+
+        project.addAction(action);
       }
     }
     else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowLeft)) {
-      int moveBy = keyEvent.isShiftPressed ? -project.timeUnitsPerBeat : -1;
+      int moveBy = keyEvent.isShiftPressed ? -project.timeUnitsPerBeat : -project.timeUnitsPerSubdivision;
 
+      MuonNoteController lastNote;
       for(final selectedNote in selectedNotes.keys) {
         if(selectedNotes[selectedNote]) {
           selectedNote.startAtTime = max(0,selectedNote.startAtTime + moveBy);
+          lastNote = selectedNote;
         }
+      }
+      
+      if(lastNote != null) {
+        final otherNotes = getSelectedNotesAsList();
+        otherNotes.remove(lastNote);
+        final action = MoveNoteAction(lastNote,otherNotes,moveBy,0);
+
+        project.addAction(action);
       }
     }
   }
