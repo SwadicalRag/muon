@@ -8,8 +8,7 @@ import 'package:synaps_flutter/synaps_flutter.dart';
 
 import "package:window_size/window_size.dart";
 
-/// Light/Dark mode implemented as a reactive boolean
-/// This happened to be the easiest way to implement this.
+/// Main app settings
 final appSettings = MuonSettingsController().ctx();
 
 void main() {
