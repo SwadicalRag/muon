@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:muon/actions/deletenote.dart';
 import 'package:muon/actions/movenote.dart';
 import 'package:muon/actions/renamenote.dart';
 import 'package:muon/actions/retimenote.dart';
@@ -441,6 +442,11 @@ class PianoRollNotesModule extends PianoRollModule {
           selectedNote.voice.notes.remove(selectedNote);
         }
       }
+
+      final action = DeleteNoteAction(getSelectedNotesAsList());
+      project.addAction(action);
+
+      selectedNotes.clear();
     }
     else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowUp)) {
       int moveBy = keyEvent.isShiftPressed ? 12 : 1;

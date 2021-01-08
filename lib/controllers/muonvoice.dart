@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:flutter/material.dart";
+import 'package:muon/actions/addnote.dart';
 import "package:synaps_flutter/synaps_flutter.dart";
 import "package:muon/controllers/muonnote.dart";
 import "package:muon/controllers/muonproject.dart";
@@ -40,9 +41,16 @@ class MuonVoiceController with WeakEqualityController {
     notes.sort((a,b) => a.startAtTime.compareTo(b.startAtTime));
   }
 
+  /// Helper method to add a note into this voice, and create an action
+  void addNote(MuonNoteController note) {
+    addNoteInternal(note);
+    final action = AddNoteAction(note);
+    project.addAction(action);
+  }
+
   /// Helper method to add a note into this voice, and also updates the
   /// note's reference to this voice
-  void addNote(MuonNoteController note) {
+  void addNoteInternal(MuonNoteController note) {
     note.voice = this;
     notes.add(note);
   }
@@ -226,7 +234,7 @@ class MuonVoiceController with WeakEqualityController {
     out.modelName = obj.modelName;
     out.randomiseTiming = obj.randomiseTiming;
     for(final note in obj.notes) {
-      out.addNote(MuonNoteController.fromSerializable(note));
+      out.addNoteInternal(MuonNoteController.fromSerializable(note));
     }
     return out;
   }

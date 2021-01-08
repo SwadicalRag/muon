@@ -277,7 +277,7 @@ class MuonProjectController with WeakEqualityController {
     out.projectDir = "startup";
 
     final baseVoice = MuonVoiceController().ctx();
-    baseVoice.addNote(
+    baseVoice.addNoteInternal(
       MuonNoteController().ctx()
         ..startAtTime = 0
         ..duration = 1
@@ -285,7 +285,7 @@ class MuonProjectController with WeakEqualityController {
         ..octave = 4
         ..lyric = "ら"
     );
-    baseVoice.addNote(
+    baseVoice.addNoteInternal(
       MuonNoteController().ctx()
         ..startAtTime = 1
         ..duration = 1
@@ -293,7 +293,7 @@ class MuonProjectController with WeakEqualityController {
         ..octave = 4
         ..lyric = "ら"
     );
-    baseVoice.addNote(
+    baseVoice.addNoteInternal(
       MuonNoteController().ctx()
         ..startAtTime = 2
         ..duration = 1
@@ -301,7 +301,7 @@ class MuonProjectController with WeakEqualityController {
         ..octave = 4
         ..lyric = "ら"
     );
-    baseVoice.addNote(
+    baseVoice.addNoteInternal(
       MuonNoteController().ctx()
         ..startAtTime = 3
         ..duration = 1
@@ -423,7 +423,7 @@ class MuonProjectController with WeakEqualityController {
                 note.startAtTime = lastNoteOnTime.toInt() * timeUnitMulFactor;
                 note.duration = (curTime - lastNoteOnTime) * timeUnitMulFactor;
                 note.lyric = "";
-                voice.addNote(note);
+                voice.addNoteInternal(note);
 
                 lastNoteOn = null;
               }
@@ -444,7 +444,7 @@ class MuonProjectController with WeakEqualityController {
                   note.startAtTime = lastNoteOnTime.toInt() * timeUnitMulFactor;
                   note.duration = (curTime - lastNoteOnTime) * timeUnitMulFactor;
                   note.lyric = "";
-                  voice.addNote(note);
+                  voice.addNoteInternal(note);
 
                   lastNoteOn = null;
                 }
@@ -500,7 +500,7 @@ class MuonProjectController with WeakEqualityController {
         note.startAtTime = event.time.toInt() * timeUnitMulFactor;
         note.duration = event.duration.toInt() * timeUnitMulFactor;
         note.lyric = event.lyric;
-        voice.addNote(note);
+        voice.addNoteInternal(note);
       }
     }
 
