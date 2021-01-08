@@ -18,6 +18,9 @@ A GUI for the [Neutrino neural singing synthesizer](https://n3utrino.work), writ
 #### Multiple voices rendered in parallel
 ![Multiple voices](eyecandy/multi_voice.png)
 
+#### Undo/Redo Actions Menu
+![Undo and Redo](eyecandy/undo_redo.png)
+
 #### Automatic voice model listing and on-the-fly changing
 ![Voice Model Changing](eyecandy/voice_model_change.png)
 
