@@ -18,6 +18,31 @@ int _toAbsoluteSemitones(String note, int octave) {
   return octave * 12 + currentNoteID;
 }
 
+int roundToModulus(int n,int mod) {
+  int rem = n % mod;
+  n = n - rem;
+
+  if(rem.abs() >= (mod ~/ 2).abs()) {
+    n += rem * n.sign;
+  }
+
+  return n;
+}
+
+int floorToModulus(int n,int mod) {
+  int rem = n % mod;
+  n = n - rem;
+
+  return n;
+}
+
+int ceilToModulus(int n,int mod) {
+  int rem = n % mod;
+  n = n - rem;
+
+  return n + mod;
+}
+
 class PianoRollNotesModule extends PianoRollModule {
   final SynapsMap<MuonNoteController, bool> selectedNotes;
 
@@ -250,22 +275,39 @@ class PianoRollNotesModule extends PianoRollModule {
 
     bool resizeMode = cursorBeatEndDistance < 15;
 
-    final fpDeltaBeats = (painter.getBeatNumAtCursor(mouseStartPos.x) % 1);
-    final deltaBeats = painter.screenPixelsToBeats(mousePos.x - mouseStartPos.x) + fpDeltaBeats / project.timeUnitsPerBeat;
-    final deltaSegments = deltaBeats * project.timeUnitsPerBeat;
-    final deltaSegmentsFixed = deltaSegments.floor();
-
     final mousePitch = painter.getPitchAtCursor(mousePos.y);
     final deltaSemiTones = _toAbsoluteSemitones(mousePitch.note,mousePitch.octave) - _toAbsoluteSemitones(originalFirstNote.note,originalFirstNote.octave);
+
+    final mouseBeatNum = max(0, painter.getBeatNumAtCursor(mousePos.x));
+    final mouseBeatSubDivNum =
+        ((mouseBeatNum * project.timeUnitsPerBeat) ~/ project.timeUnitsPerSubdivision);
+    final originalMouseBeatNum = max(0, painter.getBeatNumAtCursor(mouseStartPos.x));
+    final originalMouseBeatSubDivNum =
+        ((originalMouseBeatNum * project.timeUnitsPerBeat) ~/ project.timeUnitsPerSubdivision);
+    
+    final deltaSubDiv = mouseBeatSubDivNum - originalMouseBeatSubDivNum;
+    final deltaSegments = deltaSubDiv * project.timeUnitsPerSubdivision;
+
+    var resizeDelta = deltaSegments;
+    if(state.isShiftKeyHeld) {
+      resizeDelta = deltaSegments + project.timeUnitsPerSubdivision;
+    }
 
     for(final selectedNote in selectedNotes.keys) {
       if(selectedNotes[selectedNote]) {
         if(noteDragOriginalData[selectedNote] != null) {
           if(resizeMode) {
-            selectedNote.duration = max(1,noteDragOriginalData[selectedNote].duration + deltaSegmentsFixed);
+            selectedNote.duration = noteDragOriginalData[selectedNote].duration + resizeDelta;
+            if(state.isShiftKeyHeld) {
+              selectedNote.duration = max(project.timeUnitsPerSubdivision,floorToModulus(selectedNote.duration, project.timeUnitsPerSubdivision));
+            }
           }
           else {
-            selectedNote.startAtTime = max(0,noteDragOriginalData[selectedNote].startAtTime + deltaSegmentsFixed);
+            selectedNote.startAtTime = max(0,noteDragOriginalData[selectedNote].startAtTime + deltaSegments);
+            if(state.isShiftKeyHeld) {
+              selectedNote.startAtTime = floorToModulus(selectedNote.startAtTime, project.timeUnitsPerSubdivision);
+            }
+            
             selectedNote.note = noteDragOriginalData[selectedNote].note;
             selectedNote.octave = noteDragOriginalData[selectedNote].octave;
             selectedNote.addSemitones(deltaSemiTones.floor());

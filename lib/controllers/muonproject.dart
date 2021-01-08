@@ -74,6 +74,9 @@ class MuonProjectController with WeakEqualityController {
   /// Current number of visible subdivisions
   int currentSubdivision = 1;
 
+  /// Number of time units per subdivision
+  int get timeUnitsPerSubdivision => timeUnitsPerBeat ~/ currentSubdivision;
+
   /// Internal timer registered by this class to track the playhead
   /// TODO: this should be removed once FFI is complete
   Timer playbackTimer;

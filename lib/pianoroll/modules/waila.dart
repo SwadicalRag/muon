@@ -36,8 +36,8 @@ class PianoRollWAILAModule extends PianoRollModule {
     if (curMousePos != null) {
       final mouseBeatNum = max(0, painter.getBeatNumAtCursor(curMousePos.x));
       final mouseBeatSubDivNum =
-          (mouseBeatNum * project.timeUnitsPerBeat).floor() %
-                  project.timeUnitsPerBeat +
+          (((mouseBeatNum * project.timeUnitsPerBeat).floor() %
+                  project.timeUnitsPerBeat) ~/ project.timeUnitsPerSubdivision) +
               1;
       final mouseMeasureNum = (mouseBeatNum / project.beatsPerMeasure).ceil();
       final mousePitch = painter.getPitchAtCursor(curMousePos.y);

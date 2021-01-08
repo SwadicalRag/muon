@@ -136,6 +136,7 @@ class _PianoRollState extends State<PianoRoll> {
   int _lastClickCount = 0;
   PianoRollModule currentlyDraggingModule;
   Rect selectionRect;
+  PointerEvent lastPointerEvent;
 
   /// Current mouse cursor
   MouseCursor cursor = MouseCursor.defer;
@@ -211,6 +212,17 @@ class _PianoRollState extends State<PianoRoll> {
     } else {
       // sufficient space!
       yOffset = 0;
+    }
+  }
+
+  void updatePointerEvents() {
+    if(pointerMode == _PianoRollPointerMode.DRAGGING) {
+      currentlyDraggingModule?.onDragging(lastPointerEvent,_firstMouseDownPos);
+    }
+    else if(pointerMode == _PianoRollPointerMode.SELECTING) {
+      for(final module in widget.modules) {
+        module.onSelect(lastPointerEvent,selectionRect);
+      }
     }
   }
 
@@ -339,6 +351,7 @@ class _PianoRollState extends State<PianoRoll> {
 
           pointerMode = _PianoRollPointerMode.DRAGGING;
           currentlyDraggingModule = hitTestPassedModule;
+          lastPointerEvent = details;
           currentlyDraggingModule.onDragStart(details,_firstMouseDownPos);
         }
         else if(details.kind == PointerDeviceKind.touch) {
@@ -365,6 +378,7 @@ class _PianoRollState extends State<PianoRoll> {
       });
     }
     else if (pointerMode == _PianoRollPointerMode.SELECTING) {
+      lastPointerEvent = details;
       setState(() {
         var left = min(_firstMouseDownPos.x, details.localPosition.dx);
         var right = max(_firstMouseDownPos.x, details.localPosition.dx);
@@ -382,6 +396,7 @@ class _PianoRollState extends State<PianoRoll> {
       });
     }
     else if (pointerMode == _PianoRollPointerMode.DRAGGING) {
+      lastPointerEvent = details;
       currentlyDraggingModule?.onDragging(details,_firstMouseDownPos);
     }
   }
@@ -399,6 +414,7 @@ class _PianoRollState extends State<PianoRoll> {
         module.onSelect(details,selectionRect);
       }
 
+      lastPointerEvent = null;
       setState(() {
         // Free the selection rect
         // (inside setstate because it is used in the custompaint widget)
@@ -412,6 +428,7 @@ class _PianoRollState extends State<PianoRoll> {
       // finish dragging something!
       currentlyDraggingModule?.onDragEnd(details,_firstMouseDownPos);
       currentlyDraggingModule = null;
+      lastPointerEvent = null;
     }
     else if(pointerMode == _PianoRollPointerMode.LMB_CLICK) {
       // click!
@@ -485,6 +502,11 @@ class _PianoRollState extends State<PianoRoll> {
               for(final module in widget.modules) {
                 module.onKey(event);
               }
+
+              // Also update pointer events
+              // and call drag/select callbacks (in case they)
+              // change behavior with keypresses
+              updatePointerEvents();
             },
             child: MouseRegion(
               cursor: cursor,
