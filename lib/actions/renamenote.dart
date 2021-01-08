@@ -33,4 +33,10 @@ class RenameNoteAction extends MuonAction {
       note.lyric = oldLyrics[note];
     }
   }
+  
+  void markVoiceModified() {
+    for(final note in newLyrics.keys) {
+      note.voice.hasChangedNoteData = true;
+    }
+  }
 }

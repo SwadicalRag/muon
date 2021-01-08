@@ -30,4 +30,10 @@ class DeleteNoteAction extends MuonAction {
       note.voice.addNoteInternal(note);
     }
   }
+  
+  void markVoiceModified() {
+    for(final note in notes) {
+      note.voice.hasChangedNoteData = true;
+    }
+  }
 }

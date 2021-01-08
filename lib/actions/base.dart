@@ -12,4 +12,7 @@ abstract class MuonAction {
 
   /// Undo the action
   void undo();
+
+  /// Mark a voice as modified
+  void markVoiceModified() {}
 }

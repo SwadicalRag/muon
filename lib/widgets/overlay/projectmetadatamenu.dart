@@ -33,6 +33,7 @@ class MuonProjectMetadataMenu extends StatelessWidget {
             label: currentProject.bpm.toString() + " bpm",
             onChanged: (double value) {
               currentProject.bpm = value.floorToDouble();
+              currentProject.markAllVoicesAsChanged();
             },
           )),
           SizedBox(height: 10),
@@ -48,6 +49,7 @@ class MuonProjectMetadataMenu extends StatelessWidget {
             label: currentProject.beatsPerMeasure.toString() + " beats",
             onChanged: (double value) {
               currentProject.beatsPerMeasure = value.round();
+              currentProject.markAllVoicesAsChanged();
             },
           )),
           SizedBox(height: 10),
@@ -63,6 +65,7 @@ class MuonProjectMetadataMenu extends StatelessWidget {
             label: "1 / " + currentProject.beatValue.toString(),
             onChanged: (double value) {
               currentProject.beatValue = pow(2,value.round());
+              currentProject.markAllVoicesAsChanged();
             },
           )),
         ],

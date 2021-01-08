@@ -65,4 +65,11 @@ class MoveNoteAction extends MuonAction {
       note.addSemitones(-semitoneDelta);
     }
   }
+  
+  void markVoiceModified() {
+    baseNote.voice.hasChangedNoteData = true;
+    for(final note in otherNotes) {
+      note.voice.hasChangedNoteData = true;
+    }
+  }
 }

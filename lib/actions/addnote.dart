@@ -21,4 +21,8 @@ class AddNoteAction extends MuonAction {
   void undo() {
     note.voice.notes.remove(note);
   }
+  
+  void markVoiceModified() {
+    note.voice.hasChangedNoteData = true;
+  }
 }

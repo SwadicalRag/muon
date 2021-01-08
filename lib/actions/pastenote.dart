@@ -30,4 +30,10 @@ class PasteNoteAction extends MuonAction {
       note.voice.notes.remove(note);
     }
   }
+  
+  void markVoiceModified() {
+    for(final note in notes) {
+      note.voice.hasChangedNoteData = true;
+    }
+  }
 }

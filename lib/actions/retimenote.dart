@@ -55,4 +55,11 @@ class RetimeNoteAction extends MuonAction {
       note.duration = max(0,note.duration - fixedTimeDelta);
     }
   }
+  
+  void markVoiceModified() {
+    baseNote.voice.hasChangedNoteData = true;
+    for(final note in otherNotes) {
+      note.voice.hasChangedNoteData = true;
+    }
+  }
 }

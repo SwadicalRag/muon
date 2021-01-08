@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:muon/actions/base.dart';
 import 'package:muon/controllers/muonvoice.dart';
 
@@ -15,8 +17,9 @@ class RemoveVoiceAction extends MuonAction {
 
   void perform() {
     final currentID = voice.project.voices.indexOf(voice);
-    if(currentID >= voice.project.currentVoiceID) {
+    if(voice.project.currentVoiceID >= currentID) {
       voice.project.currentVoiceID--;
+      voice.project.currentVoiceID = max(0, voice.project.currentVoiceID);
     }
     if(voice.audioPlayer != null) {
       voice.audioPlayer.dispose();

@@ -89,9 +89,6 @@ class MuonProjectController with WeakEqualityController {
   @Observable()
   int nextActionPos = 0;
 
-  /// Internally used to check if a recompile is required for preview
-  bool hasChangedNoteData = true;
-
   /// Internal timer registered by this class to track the playhead
   /// TODO: this should be removed once FFI is complete
   Timer playbackTimer;
@@ -112,7 +109,7 @@ class MuonProjectController with WeakEqualityController {
     }
     actions.add(action);
     nextActionPos++;
-    hasChangedNoteData = true;
+    action.markVoiceModified();
   }
 
   /// Undo an action
@@ -120,7 +117,7 @@ class MuonProjectController with WeakEqualityController {
     if(nextActionPos > 0) {
       nextActionPos--;
       actions[nextActionPos].undo();
-      hasChangedNoteData = true;
+      actions[nextActionPos].markVoiceModified();
     }
   }
 
@@ -128,8 +125,8 @@ class MuonProjectController with WeakEqualityController {
   void redoAction() {
     if(nextActionPos < actions.length) {
       actions[nextActionPos].perform();
+      actions[nextActionPos].markVoiceModified();
       nextActionPos++;
-      hasChangedNoteData = true;
     }
   }
 
@@ -160,6 +157,12 @@ class MuonProjectController with WeakEqualityController {
   /// Undo until an action
   void redoUntilAction(MuonAction action) {
     redoUntilIndex(actions.indexOf(action));
+  }
+
+  void markAllVoicesAsChanged() {
+    for(final voice in voices) {
+      voice.hasChangedNoteData = true;
+    }
   }
 
   // MISCELLANEOUS METHODS
@@ -403,6 +406,7 @@ class MuonProjectController with WeakEqualityController {
                 SetTempoEvent tempoEvent = midiEvent;
 
                 this.bpm = 60 / (tempoEvent.microsecondsPerBeat / 1000);
+                this.markAllVoicesAsChanged();
               }
               break;
             }
@@ -412,6 +416,7 @@ class MuonProjectController with WeakEqualityController {
 
                 this.beatsPerMeasure = timeSigEvent.numerator;
                 this.beatValue = timeSigEvent.denominator;
+                currentProject.markAllVoicesAsChanged();
               }
               break;
             }
@@ -479,6 +484,7 @@ class MuonProjectController with WeakEqualityController {
       if(event is MusicXMLEventTempo) {
         if(importTimeMetadata) {
           this.bpm = event.tempo;
+          this.markAllVoicesAsChanged();
         }
       }
       else if(event is MusicXMLEventDivision) {
@@ -491,6 +497,7 @@ class MuonProjectController with WeakEqualityController {
         if(importTimeMetadata) {
           this.beatsPerMeasure = event.beats;
           this.beatValue = event.beatType;
+          currentProject.markAllVoicesAsChanged();
         }
       }
       else if(event is MusicXMLEventNote) {

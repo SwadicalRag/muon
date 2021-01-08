@@ -31,6 +31,9 @@ class MuonVoiceController with WeakEqualityController {
   @Observable()
   List<MuonNoteController> notes = [];
 
+  /// Internally used to check if a recompile is required for preview
+  bool hasChangedNoteData = true;
+
   /// Exports this voice to a MusicXML class
   MusicXML exportVoiceToMusicXML() {
     return project.exportVoiceToMusicXML(this);

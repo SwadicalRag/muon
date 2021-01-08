@@ -22,4 +22,8 @@ class ChangeVoiceAction extends MuonAction {
   void undo() {
     voice.modelName = oldVoiceModel;
   }
+  
+  void markVoiceModified() {
+    voice.hasChangedNoteData = true;
+  }
 }

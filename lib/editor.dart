@@ -111,19 +111,13 @@ class MuonEditor extends StatefulWidget {
   static Future<void> playAudio(BuildContext context) async {
     if(currentProject.internalStatus != "idle") {return;}
 
-    if(currentProject.hasChangedNoteData) {
-      currentProject.hasChangedNoteData = false;
-      List<Future<void>> compileRes = [];
-      currentProject.internalStatus = "compiling";
-      for(final voice in currentProject.voices) {
-        compileRes.add(_compileVoiceInternal(voice));
-      }
-      await Future.wait(compileRes).catchError((err) {
-        currentProject.hasChangedNoteData = true;
-        throw err;
-      });
-      currentProject.internalStatus = "idle";
+    List<Future<void>> compileRes = [];
+    currentProject.internalStatus = "compiling";
+    for(final voice in currentProject.voices) {
+      compileRes.add(_compileVoiceInternal(voice));
     }
+    await Future.wait(compileRes);
+    currentProject.internalStatus = "idle";
 
     final playPos = Duration(
       milliseconds: currentProject.getLabelMillisecondOffset() + 
@@ -167,9 +161,12 @@ class MuonEditor extends StatefulWidget {
       await voice.audioPlayer.unload();
     }
     
-    await voice.makeLabels();
-    await voice.runNeutrino();
-    await voice.vocodeWORLD();
+    if(voice.hasChangedNoteData) {
+      voice.hasChangedNoteData = false;
+      await voice.makeLabels();
+      await voice.runNeutrino();
+      await voice.vocodeWORLD();
+    }
   }
 
   /// Compiles all voices with NSF

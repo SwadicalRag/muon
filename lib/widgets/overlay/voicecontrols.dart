@@ -1,4 +1,6 @@
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:muon/actions/changevoice.dart';
 import 'package:muon/actions/removevoice.dart';
@@ -93,8 +95,9 @@ class MuonVoiceControls extends StatelessWidget {
                 voice.audioPlayer = null;
               }
               final currentID = voice.project.voices.indexOf(voice);
-              if(currentID >= voice.project.currentVoiceID) {
+              if(voice.project.currentVoiceID >= currentID) {
                 voice.project.currentVoiceID--;
+                voice.project.currentVoiceID = max(0, voice.project.currentVoiceID);
               }
               currentProject.voices.remove(voice);
               final action = RemoveVoiceAction(voice);
