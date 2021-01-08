@@ -28,7 +28,26 @@ typedef _onClickCallbackType = void Function(PianoRollControls pianoRoll,Pointer
 typedef _onDragCallbackType = void Function(PianoRollControls pianoRoll,PointerEvent mouseEvent,Point mouseStartPos,MuonNoteController note,Map<MuonNoteController,MuonNote> originalNoteData);
 typedef _onSelectCallbackType = void Function(PianoRollControls pianoRoll,PointerEvent mouseEvent,Rect selectionBox);
 typedef _onKeyCallbackType = void Function(PianoRollControls pianoRoll,RawKeyEvent keyEvent);
-typedef _doPaintCallbackType = void Function(Canvas canvas,Size size);
+
+abstract class PianoRollModule {
+  _PianoRollState _state;
+  _PianoRollState get state => _state;
+  PianoRollPainter _painter;
+  PianoRollPainter get painter => _painter;
+  MuonProjectController _project;
+  MuonProjectController get project => _project;
+
+  void attachToProject(MuonProjectController project) {
+    _project = project;
+  }
+
+  void onHover(PointerEvent mouseEvent);
+  void onClick(PointerEvent mouseEvent,int numClicks);
+  void onDrag(PointerEvent mouseEvent,Point mouseStartPos);
+  void onSelect(PointerEvent mouseEvent,Rect selectionBox);
+  void onKey(RawKeyEvent keyEvent);
+  void paint(Canvas canvas,Size size);
+}
 
 class PianoRoll extends StatefulWidget {
   PianoRoll({
@@ -39,7 +58,7 @@ class PianoRoll extends StatefulWidget {
     this.onDrag,
     this.onSelect,
     this.onKey,
-    this.doPaint,
+    this.modules = const [],
   });
 
   final MuonProjectController project;
@@ -49,7 +68,7 @@ class PianoRoll extends StatefulWidget {
   final _onDragCallbackType onDrag;
   final _onSelectCallbackType onSelect;
   final _onKeyCallbackType onKey;
-  final _doPaintCallbackType doPaint;
+  final List<PianoRollModule> modules;
 
   @override
   _PianoRollState createState() => _PianoRollState();
@@ -160,7 +179,7 @@ class _PianoRollState extends State<PianoRoll> {
           this.clampXY(constraits.maxHeight);
 
           var rectPainter = PianoRollPainter(widget.project, widget.selectedNotes, themeData,
-              pianoKeysWidth, xOffset, yOffset, xScale, yScale, selectionRect, curMousePos);
+              pianoKeysWidth, xOffset, yOffset, xScale, yScale, selectionRect, curMousePos, widget.modules);
 
           final controls = PianoRollControls();
           controls.painter = rectPainter;
@@ -235,6 +254,10 @@ class _PianoRollState extends State<PianoRoll> {
                   if(_selecting) {
                     widget?.onSelect(controls,details,selectionRect);
 
+                    for(final module in widget.modules) {
+                      module.onSelect(details,selectionRect);
+                    }
+
                     setState(() {
                       selectionRect = null;
                     });
@@ -245,10 +268,18 @@ class _PianoRollState extends State<PianoRoll> {
                   else if(_dragging) {
                     // dragging a note!
                     widget?.onDrag(controls,details,_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
+
+                    for(final module in widget.modules) {
+                      module.onDrag(details,_firstMouseDownPos);
+                    }
                   }
                   else {
                     // click!
                     widget?.onClick(controls,details,_lastClickCount + 1);
+
+                    for(final module in widget.modules) {
+                      module.onClick(details,_lastClickCount + 1);
+                    }
 
                     if(_lastClickTimeDecay != null) {
                       _lastClickTimeDecay.cancel();
@@ -319,10 +350,18 @@ class _PianoRollState extends State<PianoRoll> {
                       selectionRect = Rect.fromLTRB(left,top,right,bottom);
 
                       widget?.onSelect(controls,details,selectionRect);
+
+                      for(final module in widget.modules) {
+                        module.onSelect(details,selectionRect);
+                      }
                     });
                   }
                   else if (_dragging == true) {
                     widget?.onDrag(controls,details,_firstMouseDownPos,_internalDragFirstNote,noteDragOriginalData);
+
+                    for(final module in widget.modules) {
+                      module.onDrag(details,_firstMouseDownPos);
+                    }
                   }
                 },
                 onPointerHover: (details) {
@@ -336,6 +375,10 @@ class _PianoRollState extends State<PianoRoll> {
 
                   // final screenPos = Point(details.localPosition.dx,details.localPosition.dy);
                   widget?.onHover(controls,details);
+
+                  for(final module in widget.modules) {
+                    module.onHover(details);
+                  }
 
                   // var pitch = rectPainter.getPitchAtCursor(screenPos.y);
                   // var absTime = rectPainter.getBeatNumAtCursor(screenPos.x);
@@ -378,7 +421,7 @@ class _PianoRollState extends State<PianoRoll> {
 
 class PianoRollPainter extends CustomPainter {
   PianoRollPainter(this.project, this.selectedNotes, this.themeData, this.pianoKeysWidth, this.xOffset, this.yOffset, this.xScale,
-      this.yScale, this.selectionRect, this.curMousePos) : super();
+      this.yScale, this.selectionRect, this.curMousePos, this.modules) : super();
   final MuonProjectController project;
   final Map<MuonNoteController,bool> selectedNotes;
   final ThemeData themeData;
@@ -389,6 +432,7 @@ class PianoRollPainter extends CustomPainter {
   final double yScale;
   final Rect selectionRect;
   final Point curMousePos;
+  final List<PianoRollModule> modules;
 
   final double pixelsPerBeat = 500;
 
@@ -718,6 +762,10 @@ class PianoRollPainter extends CustomPainter {
           }
         }
       }
+    }
+
+    for(final module in modules) {
+      module.paint(canvas,size);
     }
 
     // set up y axis only offset
