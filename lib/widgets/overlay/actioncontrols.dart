@@ -20,17 +20,23 @@ class MuonActionControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeData = Theme.of(context);
     return Container(
-      height: 40,
+      height: 34,
       margin: EdgeInsets.symmetric(horizontal: 5,vertical: 5),
       padding: EdgeInsets.only(left: 15),
       child: Row(
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: Text(
-              "${action.title} ${action.subtitle}",
-              style: TextStyle(
-                color: themeData.brightness == Brightness.dark ? Colors.grey[100] : Colors.grey[950],
+            child: SizedBox(
+              width: 325,
+              child: Text(
+                "${action.title} ${action.subtitle}",
+                overflow: TextOverflow.fade,
+                softWrap: false,
+                style: TextStyle(
+                  color: themeData.brightness == Brightness.dark ? Colors.grey[100] : Colors.grey[950],
+                  fontSize: 13,
+                ),
               ),
             ),
           ),
