@@ -113,6 +113,11 @@ class MuonProjectController with WeakEqualityController {
     this.beatValue = controller.beatValue;
     this.currentSubdivision = controller.currentSubdivision;
 
+    for(final voice in this.voices) {
+      if(voice.audioPlayer != null) {
+        voice.audioPlayer.dispose();
+      }
+    }
     this.voices.clear();
     for(final voice in controller.voices) {this.addVoice(voice);}
 
