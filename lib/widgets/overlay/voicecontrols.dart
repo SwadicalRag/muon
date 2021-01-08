@@ -82,6 +82,10 @@ class MuonVoiceControls extends StatelessWidget {
             icon: const Icon(Icons.delete),
             tooltip: "Delete voice",
             onPressed: () {
+              if(voice.audioPlayer != null) {
+                voice.audioPlayer.dispose();
+                voice.audioPlayer = null;
+              }
               currentProject.voices.remove(voice);
             },
           ),

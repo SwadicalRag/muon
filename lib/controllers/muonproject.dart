@@ -116,6 +116,7 @@ class MuonProjectController with WeakEqualityController {
     for(final voice in this.voices) {
       if(voice.audioPlayer != null) {
         voice.audioPlayer.dispose();
+        voice.audioPlayer = null;
       }
     }
     this.voices.clear();
