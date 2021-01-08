@@ -11,6 +11,7 @@ import "dart:math";
 
 import "package:muon/controllers/muonproject.dart";
 import "package:muon/serializable/muon.dart";
+import 'package:synaps_flutter/synaps_flutter.dart';
 
 class PianoRollPitch {
   String note;
@@ -94,7 +95,6 @@ class _PianoRollState extends State<PianoRoll> {
   @override
   void initState() {
     RawKeyboard.instance.addListener(_keyListener);
-    project.ctx().synapsAddListener(Symbol("playheadTime"), _onPlayheadTimeChange);
     super.initState();
   }
 
@@ -108,11 +108,6 @@ class _PianoRollState extends State<PianoRoll> {
     isShiftKeyHeld = event.isShiftPressed;
     isAltKeyHeld = event.isAltPressed;
     isCtrlKeyHeld = event.isControlPressed;
-  }
-
-  void _onPlayheadTimeChange(dynamic newVal) {
-    // setState(() {});
-    repaint();
   }
 
   void setCursor(MouseCursor cursor) {
@@ -144,12 +139,6 @@ class _PianoRollState extends State<PianoRoll> {
     }
   }
 
-  final _repaint = ChangeNotifier();
-
-  void repaint() {
-    _repaint.notifyListeners();
-  }
-
   @override
   Widget build(BuildContext context) {
     final themeData = Theme.of(context);
@@ -166,7 +155,7 @@ class _PianoRollState extends State<PianoRoll> {
           this.clampXY(constraits.maxHeight);
 
           var rectPainter = PianoRollPainter(project, selectedNotes, themeData,
-              pianoKeysWidth, xOffset, yOffset, xScale, yScale, selectionRect, curMousePos, _repaint);
+              pianoKeysWidth, xOffset, yOffset, xScale, yScale, selectionRect, curMousePos);
 
           final controls = PianoRollControls();
           controls.painter = rectPainter;
@@ -372,7 +361,7 @@ class _PianoRollState extends State<PianoRoll> {
                 },
                 child: Container(
                   color: themeData.scaffoldBackgroundColor,
-                  child: CustomPaint(
+                  child: RxCustomPaint(
                     painter: rectPainter,
                     child: Container(),
                     willChange: true,
@@ -389,7 +378,7 @@ class _PianoRollState extends State<PianoRoll> {
 
 class PianoRollPainter extends CustomPainter {
   PianoRollPainter(this.project, this.selectedNotes, this.themeData, this.pianoKeysWidth, this.xOffset, this.yOffset, this.xScale,
-      this.yScale, this.selectionRect, this.curMousePos, Listenable repaint) : super(repaint: repaint);
+      this.yScale, this.selectionRect, this.curMousePos) : super();
   final MuonProjectController project;
   final Map<MuonNoteController,bool> selectedNotes;
   final ThemeData themeData;

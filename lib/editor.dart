@@ -373,9 +373,6 @@ class _MuonEditorState extends State<MuonEditor> {
                                 }
                                 noteAtCursor.lyric = "";
                               }
-
-                              // dumb hack to force repaint
-                              pianoRoll.state.repaint();
                             },
                           ),
                         ),
@@ -475,9 +472,6 @@ class _MuonEditorState extends State<MuonEditor> {
                         currentProject.selectedNotes[note] = true;
                       }
                     }
-
-                    // dumb hack to force repaint
-                    pianoRoll.state.repaint();
                   }
                   else if(keyEvent.isKeyPressed(LogicalKeyboardKey.keyC) || keyEvent.isKeyPressed(LogicalKeyboardKey.keyX)) {
                     // copy / cut
@@ -502,9 +496,6 @@ class _MuonEditorState extends State<MuonEditor> {
                     for(final note in currentProject.copiedNotes) {
                       note.startAtTime -= earliestTime;
                     }
-
-                    // dumb hack to force repaint
-                    pianoRoll.state.repaint();
                   }
                   else if(keyEvent.isKeyPressed(LogicalKeyboardKey.keyV)) {
                     // paste
@@ -523,9 +514,6 @@ class _MuonEditorState extends State<MuonEditor> {
                         voice.addNote(cNote);
                       }
                     }
-
-                    // dumb hack to force repaint
-                    pianoRoll.state.repaint();
                   }
                   else if(keyEvent.isKeyPressed(LogicalKeyboardKey.keyS)) {
                     currentProject.save();
@@ -544,9 +532,6 @@ class _MuonEditorState extends State<MuonEditor> {
                       selectedNote.voice.notes.remove(selectedNote);
                     }
                   }
-
-                  // dumb hack to force repaint
-                  pianoRoll.state.repaint();
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowUp)) {
                   int moveBy = keyEvent.isShiftPressed ? 12 : 1;
@@ -556,9 +541,6 @@ class _MuonEditorState extends State<MuonEditor> {
                       selectedNote.addSemitones(moveBy);
                     }
                   }
-
-                  // dumb hack to force repaint
-                  pianoRoll.state.repaint();
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowDown)) {
                   int moveBy = keyEvent.isShiftPressed ? -12 : -1;
@@ -568,9 +550,6 @@ class _MuonEditorState extends State<MuonEditor> {
                       selectedNote.addSemitones(moveBy);
                     }
                   }
-
-                  // dumb hack to force repaint
-                  pianoRoll.state.repaint();
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowRight)) {
                   int moveBy = keyEvent.isShiftPressed ? currentProject.timeUnitsPerBeat : 1;
@@ -580,9 +559,6 @@ class _MuonEditorState extends State<MuonEditor> {
                       selectedNote.startAtTime = selectedNote.startAtTime + moveBy;
                     }
                   }
-
-                  // dumb hack to force repaint
-                  pianoRoll.state.repaint();
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.arrowLeft)) {
                   int moveBy = keyEvent.isShiftPressed ? -currentProject.timeUnitsPerBeat : -1;
@@ -592,9 +568,6 @@ class _MuonEditorState extends State<MuonEditor> {
                       selectedNote.startAtTime = max(0,selectedNote.startAtTime + moveBy);
                     }
                   }
-
-                  // dumb hack to force repaint
-                  pianoRoll.state.repaint();
                 }
                 else if(keyEvent.isKeyPressed(LogicalKeyboardKey.space)) {
                   if(currentProject.internalStatus == "playing") {
