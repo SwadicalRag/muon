@@ -412,7 +412,9 @@ class MuonProjectController with WeakEqualityController {
 
     musicXML.rest((this.beatsPerMeasure * divEvent.divisions).toDouble(),1);
     var lastNoteEndTime = 0;
-    for(final note in voice.notes) {
+    for(int i=0;i < voice.notes.length;i++) {
+      final note = voice.notes[i];
+
       if(note.startAtTime > lastNoteEndTime) {
         musicXML.rest((note.startAtTime - lastNoteEndTime).toDouble(),1);
       }
@@ -428,9 +430,22 @@ class MuonProjectController with WeakEqualityController {
       pitch.octave = note.octave;
       noteEvent.pitch = pitch;
 
-      musicXML.addEvent(noteEvent);
-
       lastNoteEndTime = note.startAtTime + note.duration;
+
+      if(i != (voice.notes.length - 1)) {
+        final nextNote = voice.notes[i + 1];
+        if(nextNote.startAtTime < lastNoteEndTime) {
+          // someone has been naughty and stacked notes on top of each other
+          // so we will lop the end off the last note
+
+          if(note != null) {
+            noteEvent.duration -= lastNoteEndTime - nextNote.startAtTime;
+            musicXML.recalculateAbsoluteTime();
+          }
+        }
+      }
+
+      musicXML.addEvent(noteEvent);
     }
     musicXML.rest((this.beatsPerMeasure * divEvent.divisions).toDouble(),1);
 
