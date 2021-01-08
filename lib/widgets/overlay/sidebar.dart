@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:muon/widgets/overlay/actionsmenu.dart';
 import 'package:muon/widgets/overlay/projectmetadatamenu.dart';
 import 'package:muon/widgets/overlay/voicesmenu.dart';
 
@@ -20,6 +21,10 @@ class MuonSidebar extends StatelessWidget {
           const SizedBox(height: 10),
           Expanded(
             child: MuonVoicesMenu(),
+          ),
+          SizedBox(
+            height: 150,
+            child: MuonActionsMenu(),
           ),
         ],
       ),

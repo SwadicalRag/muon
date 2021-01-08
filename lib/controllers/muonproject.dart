@@ -1,5 +1,8 @@
 import 'dart:async';
 import "dart:io";
+import 'dart:math';
+import 'package:muon/actions/base.dart';
+import 'package:muon/editor.dart';
 import "package:synaps_flutter/synaps_flutter.dart";
 import "package:dart_midi/dart_midi.dart";
 import "package:muon/controllers/muonnote.dart";
@@ -77,6 +80,14 @@ class MuonProjectController with WeakEqualityController {
   /// Number of time units per subdivision
   int get timeUnitsPerSubdivision => timeUnitsPerBeat ~/ currentSubdivision;
 
+  /// Actions undertaken in this project
+  @Observable()
+  List<MuonAction> actions = [];
+  
+  /// Next action ID
+  @Observable()
+  int nextActionPos = 0;
+
   /// Internal timer registered by this class to track the playhead
   /// TODO: this should be removed once FFI is complete
   Timer playbackTimer;
@@ -86,6 +97,62 @@ class MuonProjectController with WeakEqualityController {
       playbackTimer.cancel();
       playbackTimer = null;
     }
+  }
+
+  // ACTIONS HELPERS
+
+  /// Register an action
+  void addAction(MuonAction action) {
+    if(actions.length > nextActionPos) {
+      actions.removeRange(nextActionPos, actions.length);
+    }
+    actions.add(action);
+    nextActionPos++;
+  }
+
+  /// Undo an action
+  void undoAction() {
+    if(nextActionPos > 0) {
+      nextActionPos--;
+      actions[nextActionPos].undo();
+    }
+  }
+
+  /// Redo an action
+  void redoAction() {
+    if(nextActionPos < actions.length) {
+      actions[nextActionPos].perform();
+      nextActionPos++;
+    }
+  }
+
+  /// Undo until an index
+  void undoUntilIndex(int index) {
+    if(index == -1) {return;}
+
+    index = max(0,index);
+    while(nextActionPos > index) {
+      undoAction();
+    }
+  }
+
+  /// Undo until an action
+  void undoUntilAction(MuonAction action) {
+    undoUntilIndex(actions.indexOf(action));
+  }
+
+  /// Undo until an index
+  void redoUntilIndex(int index) {
+    if(index == -1) {return;}
+
+    while(index >= nextActionPos) {
+      redoAction();
+    }
+  }
+
+  /// Undo until an action
+  void redoUntilAction(MuonAction action) {
+    redoUntilIndex(actions.indexOf(action));
   }
 
   // MISCELLANEOUS METHODS
@@ -109,12 +176,18 @@ class MuonProjectController with WeakEqualityController {
 
   /// updates the contents of this controller with the input controller
   void updateWith(MuonProjectController controller) {
+    this.projectFileName = controller.projectFileName;
     this.projectDir = controller.projectDir;
     this.bpm = controller.bpm;
     this.timeUnitsPerBeat = controller.timeUnitsPerBeat;
     this.beatsPerMeasure = controller.beatsPerMeasure;
     this.beatValue = controller.beatValue;
     this.currentSubdivision = controller.currentSubdivision;
+    this.actions = controller.actions;
+    this.currentVoiceID = controller.currentVoiceID;
+    this.internalStatus = "idle";
+    this.nextActionPos = controller.nextActionPos;
+    this.playheadTime = controller.playheadTime;
 
     for(final voice in this.voices) {
       if(voice.audioPlayer != null) {
@@ -129,6 +202,9 @@ class MuonProjectController with WeakEqualityController {
     for(final selectedNoteKey in controller.selectedNotes.keys) {
       this.selectedNotes[selectedNoteKey] = controller.selectedNotes[selectedNoteKey];
     }
+
+    this.copiedNotes.clear();
+    this.copiedNotesVoices.clear();
   }
 
   void setupPlaybackTimers() {

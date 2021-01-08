@@ -3,8 +3,13 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:muon/actions/movenote.dart';
+import 'package:muon/actions/renamenote.dart';
+import 'package:muon/actions/retimenote.dart';
 import 'package:muon/controllers/muonnote.dart';
 import 'package:muon/controllers/muonvoice.dart';
+import 'package:muon/editor.dart';
+import 'package:muon/helpers.dart';
 import 'package:muon/logic/japanese.dart';
 import 'package:muon/pianoroll/pianoroll.dart';
 import 'package:muon/serializable/muon.dart';
@@ -16,31 +21,6 @@ int _toAbsoluteSemitones(String note, int octave) {
   final currentNoteID = midiNotes.indexOf(note);
   
   return octave * 12 + currentNoteID;
-}
-
-int roundToModulus(int n,int mod) {
-  int rem = n % mod;
-  n = n - rem;
-
-  if(rem.abs() >= (mod ~/ 2).abs()) {
-    n += rem * n.sign;
-  }
-
-  return n;
-}
-
-int floorToModulus(int n,int mod) {
-  int rem = n % mod;
-  n = n - rem;
-
-  return n;
-}
-
-int ceilToModulus(int n,int mod) {
-  int rem = n % mod;
-  n = n - rem;
-
-  return n + mod;
 }
 
 class PianoRollNotesModule extends PianoRollModule {
@@ -172,7 +152,10 @@ class PianoRollNotesModule extends PianoRollModule {
 
         final editHistory = Map<int,String>();
 
-        showMenu(
+        String lastInput = "";
+        final newNoteLyrics = <MuonNoteController,String>{};
+
+        showMenu<void>(
           context: context,
           position: RelativeRect.fromRect(
               mouseEvent.position & Size(40, 40), // smaller rect, the touch area
@@ -192,6 +175,9 @@ class PianoRollNotesModule extends PianoRollModule {
                   final hiraganaList = JapaneseUTF8.alphabetToHiragana(text);
 
                   noteAtCursor.voice.sortNotesByTime();
+                  lastInput = hiraganaList.join("");
+
+                  newNoteLyrics.clear();
 
                   final curNotePos = noteAtCursor.voice.notes.indexOf(noteAtCursor);
                   for(int i=curNotePos;i < noteAtCursor.voice.notes.length;i++) {
@@ -200,6 +186,7 @@ class PianoRollNotesModule extends PianoRollModule {
                         editHistory[i] = noteAtCursor.voice.notes[i].lyric;
                       }
                       noteAtCursor.voice.notes[i].lyric = hiraganaList[i - curNotePos];
+                      newNoteLyrics[noteAtCursor.voice.notes[i]] = hiraganaList[i - curNotePos];
                     }
                     else if(editHistory.containsKey(i)) {
                       noteAtCursor.voice.notes[i].lyric = editHistory[i];
@@ -218,7 +205,18 @@ class PianoRollNotesModule extends PianoRollModule {
             ),
           ],
           elevation: 8.0,
-        );
+        ).then((_) {
+          final originalNoteLyrics = <MuonNoteController,String>{};
+
+          for(final editedNote in newNoteLyrics.keys) {
+            final notePos = noteAtCursor.voice.notes.indexOf(editedNote);
+            originalNoteLyrics[editedNote] = editHistory[notePos] ?? newNoteLyrics[editedNote];
+          }
+
+          final action = RenameNoteAction(newNoteLyrics, originalNoteLyrics, lastInput);
+
+          project.addAction(action);
+        });
       }
       else {
         if(project.voices.length > project.currentVoiceID) {
@@ -321,6 +319,43 @@ class PianoRollNotesModule extends PianoRollModule {
   }
 
   void onDragEnd(PointerEvent mouseEvent, Point mouseStartPos) {
+    if(_internalDragFirstNote != null) {
+      final originalNoteData = noteDragOriginalData[_internalDragFirstNote];
+
+      final timeDelta = _internalDragFirstNote.startAtTime - originalNoteData.startAtTime;
+      final semitoneDelta = _internalDragFirstNote.toAbsoluteSemitones() - _toAbsoluteSemitones(originalNoteData.note,originalNoteData.octave);
+      if((timeDelta != 0) || (semitoneDelta != 0)) {
+        final otherNotes = <MuonNoteController>[];
+        for(final selectedNote in selectedNotes.keys) {
+          if(selectedNotes[selectedNote]) {
+            if(selectedNote != _internalDragFirstNote) {
+              otherNotes.add(selectedNote);
+            }
+          }
+        }
+        final action = MoveNoteAction(_internalDragFirstNote,otherNotes,timeDelta,semitoneDelta);
+
+        project.addAction(action);
+      }
+      else {
+        final durationDelta = _internalDragFirstNote.duration - originalNoteData.duration;
+
+        if(durationDelta != 0) {
+          final otherNotes = <MuonNoteController>[];
+          for(final selectedNote in selectedNotes.keys) {
+            if(selectedNotes[selectedNote]) {
+              if(selectedNote != _internalDragFirstNote) {
+                otherNotes.add(selectedNote);
+              }
+            }
+          }
+          final action = RetimeNoteAction(_internalDragFirstNote,otherNotes,durationDelta);
+
+          project.addAction(action);
+        }
+      }
+    }
+
     noteDragOriginalData.clear();
     _internalDragFirstNote = null;
   }

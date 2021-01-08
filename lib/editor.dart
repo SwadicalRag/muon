@@ -294,6 +294,14 @@ class _MuonEditorState extends State<MuonEditor> {
                       )
                     );
                   }
+                  else if(keyEvent.isKeyPressed(LogicalKeyboardKey.keyZ)) {
+                    // undo
+                    currentProject.undoAction();
+                  }
+                  else if(keyEvent.isKeyPressed(LogicalKeyboardKey.keyY)) {
+                    // redo
+                    currentProject.redoAction();
+                  }
                 }
                 
                 if(keyEvent.isKeyPressed(LogicalKeyboardKey.space)) {
