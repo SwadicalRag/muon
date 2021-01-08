@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:muon/actions/changevoice.dart';
 import 'package:muon/actions/removevoice.dart';
 import "package:synaps_flutter/synaps_flutter.dart";
 import 'package:muon/controllers/muonvoice.dart';
@@ -60,7 +61,11 @@ class MuonVoiceControls extends StatelessWidget {
             icon: const Icon(Icons.speaker_notes),
             tooltip: "Change voice model",
             onSelected: (String result) {
+              final oldModel = voice.modelName;
               voice.modelName = result;
+
+              final action = ChangeVoiceAction(voice, result, oldModel);
+              currentProject.addAction(action);
             },
             itemBuilder: (BuildContext context) {
               final List<PopupMenuItem<String>> items = [];
