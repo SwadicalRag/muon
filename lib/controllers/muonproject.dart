@@ -1,6 +1,7 @@
 import 'dart:async';
 import "dart:io";
 import 'dart:math';
+import 'package:muon/actions/addvoice.dart';
 import 'package:muon/actions/base.dart';
 import 'package:muon/editor.dart';
 import "package:synaps_flutter/synaps_flutter.dart";
@@ -88,6 +89,9 @@ class MuonProjectController with WeakEqualityController {
   @Observable()
   int nextActionPos = 0;
 
+  /// Internally used to check if a recompile is required for preview
+  bool hasChangedNoteData = true;
+
   /// Internal timer registered by this class to track the playhead
   /// TODO: this should be removed once FFI is complete
   Timer playbackTimer;
@@ -108,6 +112,7 @@ class MuonProjectController with WeakEqualityController {
     }
     actions.add(action);
     nextActionPos++;
+    hasChangedNoteData = true;
   }
 
   /// Undo an action
@@ -115,6 +120,7 @@ class MuonProjectController with WeakEqualityController {
     if(nextActionPos > 0) {
       nextActionPos--;
       actions[nextActionPos].undo();
+      hasChangedNoteData = true;
     }
   }
 
@@ -123,6 +129,7 @@ class MuonProjectController with WeakEqualityController {
     if(nextActionPos < actions.length) {
       actions[nextActionPos].perform();
       nextActionPos++;
+      hasChangedNoteData = true;
     }
   }
 
@@ -164,9 +171,16 @@ class MuonProjectController with WeakEqualityController {
   }
 
   /// Helper method to add a voice. Also updates the voice's project reference.
-  void addVoice(MuonVoiceController voice) {
+  void addVoiceInternal(MuonVoiceController voice) {
     voice.project = this;
     voices.add(voice);
+  }
+
+  /// Helper method to add a voice and create an action
+  void addVoice(MuonVoiceController voice) {
+    final action = AddVoiceAction(voice);
+    addVoiceInternal(voice);
+    addAction(action);
   }
 
   /// Returns the number of milliseconds until the first phoneme label
@@ -183,7 +197,6 @@ class MuonProjectController with WeakEqualityController {
     this.beatsPerMeasure = controller.beatsPerMeasure;
     this.beatValue = controller.beatValue;
     this.currentSubdivision = controller.currentSubdivision;
-    this.actions = controller.actions;
     this.currentVoiceID = controller.currentVoiceID;
     this.internalStatus = "idle";
     this.nextActionPos = controller.nextActionPos;
@@ -196,7 +209,7 @@ class MuonProjectController with WeakEqualityController {
       }
     }
     this.voices.clear();
-    for(final voice in controller.voices) {this.addVoice(voice);}
+    for(final voice in controller.voices) {this.addVoiceInternal(voice);}
 
     this.selectedNotes.clear();
     for(final selectedNoteKey in controller.selectedNotes.keys) {
@@ -205,6 +218,11 @@ class MuonProjectController with WeakEqualityController {
 
     this.copiedNotes.clear();
     this.copiedNotesVoices.clear();
+
+    this.actions.clear();
+    for(final action in controller.actions) {
+      actions.add(action);
+    }
   }
 
   void setupPlaybackTimers() {
@@ -291,7 +309,7 @@ class MuonProjectController with WeakEqualityController {
         ..octave = 4
         ..lyric = "ら"
     );
-    out.addVoice(baseVoice);
+    out.addVoiceInternal(baseVoice);
 
     out.setSubdivision(4);
 
@@ -595,7 +613,7 @@ class MuonProjectController with WeakEqualityController {
     out.beatsPerMeasure = obj.beatsPerMeasure;
     out.beatValue = obj.beatValue;
     for(final voice in obj.voices) {
-      out.addVoice(MuonVoiceController.fromSerializable(voice,out));
+      out.addVoiceInternal(MuonVoiceController.fromSerializable(voice,out));
     }
     return out;
   }

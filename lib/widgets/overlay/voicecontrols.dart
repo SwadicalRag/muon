@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:muon/actions/removevoice.dart';
 import "package:synaps_flutter/synaps_flutter.dart";
 import 'package:muon/controllers/muonvoice.dart';
 import 'package:muon/editor.dart';
@@ -86,7 +87,13 @@ class MuonVoiceControls extends StatelessWidget {
                 voice.audioPlayer.dispose();
                 voice.audioPlayer = null;
               }
+              final currentID = voice.project.voices.indexOf(voice);
+              if(currentID >= voice.project.currentVoiceID) {
+                voice.project.currentVoiceID--;
+              }
               currentProject.voices.remove(voice);
+              final action = RemoveVoiceAction(voice);
+              currentProject.addAction(action);
             },
           ),
         ],

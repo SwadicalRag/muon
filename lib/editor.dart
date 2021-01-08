@@ -111,13 +111,19 @@ class MuonEditor extends StatefulWidget {
   static Future<void> playAudio(BuildContext context) async {
     if(currentProject.internalStatus != "idle") {return;}
 
-    List<Future<void>> compileRes = [];
-    currentProject.internalStatus = "compiling";
-    for(final voice in currentProject.voices) {
-      compileRes.add(_compileVoiceInternal(voice));
+    if(currentProject.hasChangedNoteData) {
+      currentProject.hasChangedNoteData = false;
+      List<Future<void>> compileRes = [];
+      currentProject.internalStatus = "compiling";
+      for(final voice in currentProject.voices) {
+        compileRes.add(_compileVoiceInternal(voice));
+      }
+      await Future.wait(compileRes).catchError((err) {
+        currentProject.hasChangedNoteData = true;
+        throw err;
+      });
+      currentProject.internalStatus = "idle";
     }
-    await Future.wait(compileRes);
-    currentProject.internalStatus = "idle";
 
     final playPos = Duration(
       milliseconds: currentProject.getLabelMillisecondOffset() + 

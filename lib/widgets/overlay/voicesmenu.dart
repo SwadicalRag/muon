@@ -47,8 +47,7 @@ class MuonVoicesMenu extends StatelessWidget {
                       tooltip: "Add voice",
                       onPressed: () {
                         final newVoice = MuonVoiceController().ctx();
-                        newVoice.project = currentProject;
-                        currentProject.voices.add(newVoice);
+                        currentProject.addVoice(newVoice);
                       },
                     ),
                   ),
