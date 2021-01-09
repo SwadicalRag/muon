@@ -292,10 +292,10 @@ class PianoRollNotesModule extends PianoRollModule {
     final mousePitch = painter.getPitchAtCursor(mousePos.y);
     final deltaSemiTones = _toAbsoluteSemitones(mousePitch.note,mousePitch.octave) - _toAbsoluteSemitones(originalFirstNote.note,originalFirstNote.octave);
 
-    final mouseBeatNum = max(0, painter.getBeatNumAtCursor(mousePos.x));
+    final mouseBeatNum = painter.getBeatNumAtCursor(mousePos.x);
     final mouseBeatSubDivNum =
         ((mouseBeatNum * project.timeUnitsPerBeat) ~/ project.timeUnitsPerSubdivision);
-    final originalMouseBeatNum = max(0, painter.getBeatNumAtCursor(mouseStartPos.x));
+    final originalMouseBeatNum = painter.getBeatNumAtCursor(mouseStartPos.x);
     final originalMouseBeatSubDivNum =
         ((originalMouseBeatNum * project.timeUnitsPerBeat) ~/ project.timeUnitsPerSubdivision);
     
@@ -314,6 +314,9 @@ class PianoRollNotesModule extends PianoRollModule {
             selectedNote.duration = noteDragOriginalData[selectedNote].duration + resizeDelta;
             if(state.isShiftKeyHeld) {
               selectedNote.duration = max(project.timeUnitsPerSubdivision,floorToModulus(selectedNote.duration, project.timeUnitsPerSubdivision));
+            }
+            else {
+              selectedNote.duration = max(project.timeUnitsPerSubdivision,selectedNote.duration);
             }
           }
           else {
@@ -335,27 +338,33 @@ class PianoRollNotesModule extends PianoRollModule {
 
   void onDragEnd(PointerEvent mouseEvent, Point mouseStartPos) {
     if(_internalDragFirstNote != null) {
-      final originalNoteData = noteDragOriginalData[_internalDragFirstNote];
+      final timeDeltas = <int>[];
+      final semitoneDeltas = <int>[];
+      final durationDeltas = <int>[];
+      final notes = <MuonNoteController>[];
 
-      final timeDelta = _internalDragFirstNote.startAtTime - originalNoteData.startAtTime;
-      final semitoneDelta = _internalDragFirstNote.toAbsoluteSemitones() - _toAbsoluteSemitones(originalNoteData.note,originalNoteData.octave);
-      if((timeDelta != 0) || (semitoneDelta != 0)) {
-        final otherNotes = getSelectedNotesAsList();
-        otherNotes.remove(_internalDragFirstNote);
-        final action = MoveNoteAction(_internalDragFirstNote,otherNotes,timeDelta,semitoneDelta);
+      for(final otherNote in selectedNotes.keys) {
+        if(selectedNotes[otherNote]) {
+          notes.add(otherNote);
+          timeDeltas.add(otherNote.startAtTime - noteDragOriginalData[otherNote].startAtTime);
+          semitoneDeltas.add(otherNote.toAbsoluteSemitones() - _toAbsoluteSemitones(noteDragOriginalData[otherNote].note,noteDragOriginalData[otherNote].octave));
+          durationDeltas.add(otherNote.duration - noteDragOriginalData[otherNote].duration);
+        }
+      }
+
+      final maxTimeDelta = timeDeltas.reduce(max);
+      final maxSemitoneDelta = semitoneDeltas.reduce(max);
+      final maxDurationDelta = durationDeltas.reduce(max);
+
+      if((maxTimeDelta != 0) || (maxSemitoneDelta != 0)) {
+        final action = MoveNoteAction(notes,timeDeltas,semitoneDeltas);
 
         project.addAction(action);
       }
-      else {
-        final durationDelta = _internalDragFirstNote.duration - originalNoteData.duration;
+      else if(maxDurationDelta != 0) {
+        final action = RetimeNoteAction(notes,durationDeltas);
 
-        if(durationDelta != 0) {
-        final otherNotes = getSelectedNotesAsList();
-        otherNotes.remove(_internalDragFirstNote);
-          final action = RetimeNoteAction(_internalDragFirstNote,otherNotes,durationDelta);
-
-          project.addAction(action);
-        }
+        project.addAction(action);
       }
     }
 
@@ -485,9 +494,8 @@ class PianoRollNotesModule extends PianoRollModule {
       }
       
       if(lastNote != null) {
-        final otherNotes = getSelectedNotesAsList();
-        otherNotes.remove(lastNote);
-        final action = MoveNoteAction(lastNote,otherNotes,0,moveBy);
+        final notes = getSelectedNotesAsList();
+        final action = MoveNoteAction(notes,[]..fillRange(0,notes.length,0),[]..fillRange(0,notes.length,moveBy));
 
         project.addAction(action);
       }
@@ -504,9 +512,8 @@ class PianoRollNotesModule extends PianoRollModule {
       }
       
       if(lastNote != null) {
-        final otherNotes = getSelectedNotesAsList();
-        otherNotes.remove(lastNote);
-        final action = MoveNoteAction(lastNote,otherNotes,0,moveBy);
+        final notes = getSelectedNotesAsList();
+        final action = MoveNoteAction(notes,[]..fillRange(0,notes.length,0),[]..fillRange(0,notes.length,moveBy));
 
         project.addAction(action);
       }
@@ -523,9 +530,8 @@ class PianoRollNotesModule extends PianoRollModule {
       }
       
       if(lastNote != null) {
-        final otherNotes = getSelectedNotesAsList();
-        otherNotes.remove(lastNote);
-        final action = MoveNoteAction(lastNote,otherNotes,moveBy,0);
+        final notes = getSelectedNotesAsList();
+        final action = MoveNoteAction(notes,[]..fillRange(0,notes.length,moveBy),[]..fillRange(0,notes.length,0));
 
         project.addAction(action);
       }
@@ -542,9 +548,8 @@ class PianoRollNotesModule extends PianoRollModule {
       }
       
       if(lastNote != null) {
-        final otherNotes = getSelectedNotesAsList();
-        otherNotes.remove(lastNote);
-        final action = MoveNoteAction(lastNote,otherNotes,moveBy,0);
+        final notes = getSelectedNotesAsList();
+        final action = MoveNoteAction(notes,[]..fillRange(0,notes.length,moveBy),[]..fillRange(0,notes.length,0));
 
         project.addAction(action);
       }
