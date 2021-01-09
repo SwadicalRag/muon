@@ -85,7 +85,7 @@ class MuonEditor extends StatefulWidget {
         label: "Muon Project Files",
         extensions: ["json"],
       )],
-      suggestedName: "project",
+      suggestedName: "project.json",
     )
     .then((value) {
       if(value != null) {
