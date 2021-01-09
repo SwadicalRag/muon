@@ -495,7 +495,7 @@ class PianoRollNotesModule extends PianoRollModule {
       
       if(lastNote != null) {
         final notes = getSelectedNotesAsList();
-        final action = MoveNoteAction(notes,[]..fillRange(0,notes.length,0),[]..fillRange(0,notes.length,moveBy));
+        final action = MoveNoteAction(notes,List.filled(notes.length,0),List.filled(notes.length,moveBy));
 
         project.addAction(action);
       }
@@ -513,7 +513,9 @@ class PianoRollNotesModule extends PianoRollModule {
       
       if(lastNote != null) {
         final notes = getSelectedNotesAsList();
-        final action = MoveNoteAction(notes,[]..fillRange(0,notes.length,0),[]..fillRange(0,notes.length,moveBy));
+        final action = MoveNoteAction(notes,List.filled(notes.length,0),List.filled(notes.length,moveBy));
+
+        print("Action added");
 
         project.addAction(action);
       }
@@ -531,7 +533,7 @@ class PianoRollNotesModule extends PianoRollModule {
       
       if(lastNote != null) {
         final notes = getSelectedNotesAsList();
-        final action = MoveNoteAction(notes,[]..fillRange(0,notes.length,moveBy),[]..fillRange(0,notes.length,0));
+        final action = MoveNoteAction(notes,List.filled(notes.length,moveBy),List.filled(notes.length,0));
 
         project.addAction(action);
       }
@@ -549,7 +551,7 @@ class PianoRollNotesModule extends PianoRollModule {
       
       if(lastNote != null) {
         final notes = getSelectedNotesAsList();
-        final action = MoveNoteAction(notes,[]..fillRange(0,notes.length,moveBy),[]..fillRange(0,notes.length,0));
+        final action = MoveNoteAction(notes,List.filled(notes.length,moveBy),List.filled(notes.length,0));
 
         project.addAction(action);
       }
