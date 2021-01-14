@@ -31,6 +31,9 @@ class MuonProjectController with WeakEqualityController {
   /// The file name of this project (without file extension)
   String get projectFileNameNoExt => p.basenameWithoutExtension(projectFileName);
 
+  /// The file name of this project (without file extension)
+  String get projectFileNameNoSpacesNoExt => p.basenameWithoutExtension(projectFileName.replaceAll(" ", "_"));
+
   /// Beats per minute
   @Observable()
   double bpm = 120.0;
@@ -171,6 +174,12 @@ class MuonProjectController with WeakEqualityController {
   /// with a given subtree path
   String getProjectFilePath(String filePath) {
     return p.absolute(projectDir + "/" + filePath);
+  }
+
+  /// Helper method to concatenate this project's filepath
+  /// with a given subtree path with quotes
+  String getQuotedProjectFilePath(String filePath) {
+    return '"' + p.absolute(projectDir + "/" + filePath) + '"';
   }
 
   /// Helper method to add a voice. Also updates the voice's project reference.
